@@ -1,0 +1,634 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 主题 CSS 变量 - 默认森林绿 ===== */
+:root {
+    --primary-color: #2d8659;
+    --primary-light: #4a9d6f;
+    --theme-gradient-from: #2d8659;
+    --theme-gradient-to: #4a9d6f;
+    --ai-avatar-from: #5eb3d6;
+    --ai-avatar-to: #87ceeb;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fcfb;
+    --bg-tertiary: #f5faf8;
+    --text-primary: #333333;
+    --text-title: #1a1a1a;
+    --text-sub: #9ab8a8;
+    --subtitle-color: #8ba599;
+    --border-color: rgba(74, 157, 111, 0.15);
+    --menu-border: #d0e4d8;
+    --hover-bg: rgba(74, 157, 111, 0.06);
+    --hover-bg-medium: rgba(74, 157, 111, 0.12);
+    --hover-bg-strong: #f5fbf7;
+    --code-border: #3d7a5f;
+    --thinking-border: rgba(45, 134, 89, 0.2);
+}
+
+/* 暗夜黑主题 */
+:root[data-theme="dark"] {
+    --primary-color: #cccccc;
+    --primary-light: #eeeeee;
+    --theme-gradient-from: #aaaaaa;
+    --theme-gradient-to: #cccccc;
+    --ai-avatar-from: #777777;
+    --ai-avatar-to: #999999;
+    --bg-primary: #2a2a2a;
+    --bg-secondary: #252525;
+    --bg-tertiary: #1c1c1c;
+    --text-primary: #ffffff;
+    --text-title: #ffffff;
+    --text-sub: #aaaaaa;
+    --subtitle-color: #999999;
+    --border-color: rgba(255, 255, 255, 0.12);
+    --menu-border: #444444;
+    --hover-bg: rgba(255, 255, 255, 0.08);
+    --hover-bg-medium: rgba(255, 255, 255, 0.12);
+    --hover-bg-strong: #383838;
+    --code-border: #666666;
+    --thinking-border: rgba(255, 255, 255, 0.1);
+}
+
+/* 天空蓝主题 */
+:root[data-theme="blue"] {
+    --primary-color: #0066cc;
+    --primary-light: #0099ff;
+    --theme-gradient-from: #0066cc;
+    --theme-gradient-to: #0099ff;
+    --ai-avatar-from: #0099ff;
+    --ai-avatar-to: #66ccff;
+    --bg-secondary: #f0f7ff;
+    --bg-tertiary: #e8f4ff;
+    --text-sub: #5588aa;
+    --subtitle-color: #5588aa;
+    --border-color: rgba(0, 102, 204, 0.15);
+    --menu-border: #b0cce8;
+    --hover-bg: rgba(0, 102, 204, 0.06);
+    --hover-bg-medium: rgba(0, 102, 204, 0.12);
+    --hover-bg-strong: #f0f7ff;
+    --code-border: #0066cc;
+    --thinking-border: rgba(0, 102, 204, 0.2);
+}
+
+/* ===== 暗黑模式 - 覆盖背景色变量 ===== */
+html.dark-mode {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #252525;
+    --bg-tertiary: #1a1a1a;
+    --text-primary: #ffffff;
+    --text-title: #ffffff;
+    --text-sub: #aaaaaa;
+    --subtitle-color: #999999;
+    --border-color: rgba(255, 255, 255, 0.12);
+    --menu-border: rgba(255, 255, 255, 0.15);
+    --hover-bg: rgba(255, 255, 255, 0.06);
+    --hover-bg-medium: rgba(255, 255, 255, 0.10);
+    --hover-bg-strong: #333333;
+    background-color: #1a1a1a;
+    color: #ffffff;
+}
+
+html.dark-mode #app {
+    background: #1a1a1a;
+}
+
+html.dark-mode body {
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+/* ===== 新增主题色 ===== */
+:root[data-theme="red"] {
+    --primary-color: #e54d42;
+    --primary-light: #f06860;
+    --theme-gradient-from: #e54d42;
+    --theme-gradient-to: #f06860;
+    --ai-avatar-from: #e54d42;
+    --ai-avatar-to: #f06860;
+    --bg-secondary: #fef5f4;
+    --bg-tertiary: #fef2f1;
+    --text-sub: #c27a76;
+    --subtitle-color: #c27a76;
+    --border-color: rgba(229, 77, 66, 0.15);
+    --menu-border: #f0cac7;
+    --hover-bg: rgba(229, 77, 66, 0.06);
+    --hover-bg-medium: rgba(229, 77, 66, 0.12);
+    --hover-bg-strong: #fef5f4;
+    --code-border: #e54d42;
+    --thinking-border: rgba(229, 77, 66, 0.2);
+}
+
+:root[data-theme="orange"] {
+    --primary-color: #e67e22;
+    --primary-light: #f0983a;
+    --theme-gradient-from: #e67e22;
+    --theme-gradient-to: #f0983a;
+    --ai-avatar-from: #e67e22;
+    --ai-avatar-to: #f0983a;
+    --bg-secondary: #fef8f0;
+    --bg-tertiary: #fef5ec;
+    --text-sub: #c49a6c;
+    --subtitle-color: #c49a6c;
+    --border-color: rgba(230, 126, 34, 0.15);
+    --menu-border: #f0d8b8;
+    --hover-bg: rgba(230, 126, 34, 0.06);
+    --hover-bg-medium: rgba(230, 126, 34, 0.12);
+    --hover-bg-strong: #fef8f0;
+    --code-border: #e67e22;
+    --thinking-border: rgba(230, 126, 34, 0.2);
+}
+
+:root[data-theme="purple"] {
+    --primary-color: #8b5cf6;
+    --primary-light: #a78bfa;
+    --theme-gradient-from: #8b5cf6;
+    --theme-gradient-to: #a78bfa;
+    --ai-avatar-from: #8b5cf6;
+    --ai-avatar-to: #a78bfa;
+    --bg-secondary: #f8f5ff;
+    --bg-tertiary: #f5f0ff;
+    --text-sub: #9b8ac4;
+    --subtitle-color: #9b8ac4;
+    --border-color: rgba(139, 92, 246, 0.15);
+    --menu-border: #d4c4f0;
+    --hover-bg: rgba(139, 92, 246, 0.06);
+    --hover-bg-medium: rgba(139, 92, 246, 0.12);
+    --hover-bg-strong: #f8f5ff;
+    --code-border: #8b5cf6;
+    --thinking-border: rgba(139, 92, 246, 0.2);
+}
+
+:root[data-theme="pink"] {
+    --primary-color: #ec4899;
+    --primary-light: #f472b6;
+    --theme-gradient-from: #ec4899;
+    --theme-gradient-to: #f472b6;
+    --ai-avatar-from: #ec4899;
+    --ai-avatar-to: #f472b6;
+    --bg-secondary: #fef5fa;
+    --bg-tertiary: #fdf2f8;
+    --text-sub: #c48aa8;
+    --subtitle-color: #c48aa8;
+    --border-color: rgba(236, 72, 153, 0.15);
+    --menu-border: #f0c4d8;
+    --hover-bg: rgba(236, 72, 153, 0.06);
+    --hover-bg-medium: rgba(236, 72, 153, 0.12);
+    --hover-bg-strong: #fef5fa;
+    --code-border: #ec4899;
+    --thinking-border: rgba(236, 72, 153, 0.2);
+}
+
+:root[data-theme="cyan"] {
+    --primary-color: #06b6d4;
+    --primary-light: #22d3ee;
+    --theme-gradient-from: #06b6d4;
+    --theme-gradient-to: #22d3ee;
+    --ai-avatar-from: #06b6d4;
+    --ai-avatar-to: #22d3ee;
+    --bg-secondary: #f0fdff;
+    --bg-tertiary: #ecfeff;
+    --text-sub: #6ba8b8;
+    --subtitle-color: #6ba8b8;
+    --border-color: rgba(6, 182, 212, 0.15);
+    --menu-border: #a8e0ec;
+    --hover-bg: rgba(6, 182, 212, 0.06);
+    --hover-bg-medium: rgba(6, 182, 212, 0.12);
+    --hover-bg-strong: #f0fdff;
+    --code-border: #06b6d4;
+    --thinking-border: rgba(6, 182, 212, 0.2);
+}
+
+/* ===== 字体大小设置 ===== */
+:root[data-font-size="small"] {
+    --chat-font-size: 13px;
+    --chat-line-height: 1.5;
+}
+:root[data-font-size="default"],
+:root:not([data-font-size]) {
+    --chat-font-size: 15px;
+    --chat-line-height: 1.7;
+}
+:root[data-font-size="large"] {
+    --chat-font-size: 17px;
+    --chat-line-height: 1.8;
+}
+
+/* ===== 消息样式 (平铺模式) ===== */
+:root[data-bubble-style="plain"] .user-bubble {
+    background: var(--bg-secondary, #f3f4f6) !important;
+    color: var(--text-primary) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    border: 1px solid var(--border-color) !important;
+}
+:root[data-bubble-style="plain"] .user-text {
+    color: var(--text-primary) !important;
+}
+
+/* ===== 基础样式 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    transition: background 0.3s ease;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    transition: background 0.3s ease;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-light);
+    opacity: 0.8;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+    background: rgba(180, 180, 180, 0.4);
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: rgba(180, 180, 180, 0.6);
+}
+
+/* ===== 暗黑模式 - Sidebar ===== */
+html.dark-mode .sidebar {
+    background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+    border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .logo-section {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(100, 180, 220, 0.04) 100%);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .logo-title {
+    color: #ffffff;
+}
+
+html.dark-mode .empty-state {
+    color: #999999;
+}
+
+html.dark-mode .chat-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: transparent;
+}
+
+html.dark-mode .chat-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+html.dark-mode .chat-item.active {
+    background: rgba(94, 179, 214, 0.2);
+    border-color: rgba(94, 179, 214, 0.35);
+}
+
+html.dark-mode .chat-title {
+    color: #e0e0e0;
+}
+
+html.dark-mode .chat-time {
+    color: #999999;
+}
+
+html.dark-mode .bottom-menu {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(100, 180, 220, 0.02) 100%);
+}
+
+html.dark-mode .menu-btn,
+html.dark-mode .toggle-btn {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e0e0e0;
+}
+
+html.dark-mode .menu-btn:hover,
+html.dark-mode .toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+/* ===== 暗黑模式 - Header ===== */
+html.dark-mode .header {
+    background: #1a1a1a;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .header-title {
+    color: #ffffff;
+}
+
+html.dark-mode .header-subtitle {
+    color: #999999;
+}
+
+html.dark-mode .header-btn {
+    color: #999999;
+}
+
+html.dark-mode .header-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+}
+
+html.dark-mode .dropdown-menu {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .menu-item {
+    color: #e0e0e0;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+html.dark-mode .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== 暗黑模式 - ChatArea ===== */
+html.dark-mode .chat-area {
+    background: #0d0d0d;
+}
+
+html.dark-mode .welcome-card {
+    background: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .welcome-card:hover {
+    background: #222222;
+}
+
+html.dark-mode .card-title {
+    color: #e0e0e0;
+}
+
+html.dark-mode .card-desc {
+    color: #999999;
+}
+
+html.dark-mode .ai-bubble {
+    background: #1e1e1e;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-text-formatted {
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-text-formatted .md-h1,
+html.dark-mode .message-text-formatted .md-h2,
+html.dark-mode .message-text-formatted .md-h3 {
+    color: #ffffff;
+}
+
+html.dark-mode .message-text-formatted .ordered-item,
+html.dark-mode .message-text-formatted .unordered-item {
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-text-formatted .code-block {
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-text-formatted .code-block code {
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-text-formatted .inline-code {
+    background: #333333;
+    color: #b0e0cc;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== 暗黑模式 - InputArea ===== */
+html.dark-mode .input-section {
+    background: #1a1a1a;
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .message-input-section {
+    background: #252525;
+}
+
+html.dark-mode .control-btn {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+html.dark-mode .control-btn:hover:not(:disabled) {
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+html.dark-mode .control-select {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+html.dark-mode .skills-input-container {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .skills-search {
+    color: #e0e0e0;
+}
+
+html.dark-mode .skills-dropdown {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .skills-dropdown label:hover {
+    background: #333333;
+}
+
+html.dark-mode .skills-dropdown span {
+    color: #e0e0e0;
+}
+
+html.dark-mode .message-textarea {
+    color: #e0e0e0;
+}
+
+html.dark-mode .file-item {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+/* ===== 暗黑模式 - SettingsPanel & ProfilePanel ===== */
+html.dark-mode .settings-overlay,
+html.dark-mode .profile-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+html.dark-mode .settings-panel,
+html.dark-mode .profile-panel {
+    background: #1a1a1a;
+}
+
+html.dark-mode .settings-header,
+html.dark-mode .profile-header {
+    background: #252525;
+}
+
+html.dark-mode .settings-header h2,
+html.dark-mode .profile-header h2 {
+    color: #ffffff;
+}
+
+html.dark-mode .section-title {
+    color: #e0e0e0;
+}
+
+html.dark-mode .theme-option {
+    background: #252525;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode .theme-option.active {
+    border-color: rgba(74, 157, 111, 0.5);
+    background: rgba(74, 157, 111, 0.1);
+}
+
+html.dark-mode .theme-option span,
+html.dark-mode .setting-label {
+    color: #e0e0e0;
+}
+
+html.dark-mode .language-select {
+    background: #252525;
+    color: #e0e0e0;
+}
+
+html.dark-mode .language-select option {
+    background: #252525;
+    color: #e0e0e0;
+}
+
+html.dark-mode .setting-item {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+html.dark-mode .setting-desc {
+    color: #666666;
+}
+
+html.dark-mode .about-info {
+    background: #252525;
+}
+
+html.dark-mode .about-info p {
+    color: #e0e0e0;
+}
+
+html.dark-mode .avatar {
+    background: #2a2a2a;
+}
+
+html.dark-mode .user-name {
+    color: #ffffff;
+}
+
+html.dark-mode .user-email,
+html.dark-mode .user-phone {
+    color: #999999;
+}
+
+html.dark-mode .upload-avatar-btn {
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+html.dark-mode .upload-avatar-btn:hover {
+    background: #333333;
+}
+
+html.dark-mode .modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+html.dark-mode .modal-content {
+    background: #252525;
+}
+
+html.dark-mode .modal-content h3 {
+    color: #ffffff;
+}
+
+html.dark-mode .edit-input {
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+html.dark-mode .btn-cancel {
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+html.dark-mode .btn-save {
+    background: var(--primary-color);
+    color: white;
+}
+
+html.dark-mode .logout-btn {
+    background: #ff6b6b;
+    color: white;
+}
+
+/* 输入框样式 - 移除默认蓝色边框 */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+    outline: none;
+}
+
+/* 按钮样式 */
+button {
+    transition: all 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.98);
+}
