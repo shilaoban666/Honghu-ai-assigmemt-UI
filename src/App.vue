@@ -57,6 +57,10 @@
         @open-settings="showSettings = true"
         @mobile-close="mobileMenuOpen = false"
         @update:sidebarWidth="w => sidebarWidth = w"
+        @open-skill-plaza="() => {}"
+        @open-mcp-plaza="() => {}"
+        @open-agent-plaza="() => {}"
+        @open-deep-research="() => {}"
       />
 
       <!-- 右侧主区域 -->
@@ -100,6 +104,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useChat } from '@/stores/chatStore'
 import { initTheme, applyTheme as applyThemeUtil, getTheme } from '@/utils/theme'
 import { getLanguage } from '@/utils/i18n'
+import { loginAsGuest } from '@/api/auth'
 import Login from '@/components/Login.vue'
 import ForgotPassword from '@/components/ForgotPassword.vue'
 import Register from '@/components/Register.vue'
@@ -143,7 +148,29 @@ const handleLogin = (loginData) => {
   window.location.reload()
 }
 
-const skipLogin = () => {
+const skipLogin = async () => {
+  try {
+    const r = await loginAsGuest()
+    chatStore.login({
+      userId: r.userId || 'guest',
+      username: r.username || 'Guest',
+      nickname: r.nickname || 'Guest',
+      userRole: r.userRole || 'GUEST',
+      identity: r.identity || 'GUEST',
+      identityLabel: r.identityLabel || '',
+      availableModels: r.availableModels || []
+    })
+  } catch {
+    // 后端不可用时仍允许跳过
+    chatStore.login({
+      userId: 'guest',
+      username: 'Guest',
+      nickname: 'Guest',
+      userRole: 'GUEST',
+      identity: 'GUEST',
+      availableModels: []
+    })
+  }
   showAuthPage.value = false
 }
 

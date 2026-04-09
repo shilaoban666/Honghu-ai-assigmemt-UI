@@ -16,6 +16,10 @@ export const useChat = defineStore('chat', () => {
   const userEmail = ref('')
   const userPhone = ref('')
   const userAvatar = ref('')
+  const userRole = ref('GUEST')
+  const identity = ref('GUEST')
+  const identityLabel = ref('')
+  const availableModels = ref([])
 
   // 从localStorage恢复登录状态
   const initFromLocalStorage = () => {
@@ -42,6 +46,10 @@ export const useChat = defineStore('chat', () => {
     userEmail.value = userInfo.email || ''
     userPhone.value = userInfo.phone || ''
     userAvatar.value = userInfo.avatar || ''
+    userRole.value = userInfo.userRole || 'GUEST'
+    identity.value = userInfo.identity || userInfo.userRole || 'GUEST'
+    identityLabel.value = userInfo.identityLabel || ''
+    availableModels.value = userInfo.availableModels || []
 
     // 保存到localStorage
     localStorage.setItem('isLoggedIn', 'true')
@@ -59,6 +67,10 @@ export const useChat = defineStore('chat', () => {
     userEmail.value = ''
     userPhone.value = ''
     userAvatar.value = ''
+    userRole.value = 'GUEST'
+    identity.value = 'GUEST'
+    identityLabel.value = ''
+    availableModels.value = []
 
     // 清除localStorage
     localStorage.removeItem('isLoggedIn')
@@ -242,6 +254,10 @@ export const useChat = defineStore('chat', () => {
     userEmail,
     userPhone,
     userAvatar,
+    userRole,
+    identity,
+    identityLabel,
+    availableModels,
     login,
     logout,
     updateUserInfo,
