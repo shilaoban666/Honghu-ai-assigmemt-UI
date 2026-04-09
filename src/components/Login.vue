@@ -318,7 +318,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { loginWithPassword, loginWithPhone, sendVerificationCode } from '@/api/auth'
+import { loginWithPassword, loginWithPhone, sendVerificationCode, loginAsGuest } from '@/api/auth'
 import { t, setLanguage, getLanguage } from '@/utils/i18n'
 
 const emit = defineEmits(['login', 'forgot-password', 'register', 'skip'])
@@ -423,8 +423,14 @@ const handleLogin = async () => {
     const r = await loginWithPassword(form.value.username, form.value.password)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
     if (form.value.rememberMe) localStorage.setItem('rememberMe', 'true')
-    emit('login', { userId: r.userId, username: r.username, nickname: r.nickname || r.username, email: r.email, phone: r.phone, avatar: r.avatar })
-  } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
+    emit('login', {
+      userId: r.userId, username: r.username, nickname: r.nickname || r.username,
+      email: r.email, phone: r.phone, avatar: r.avatar,
+      userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
+      permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
+    })
+  } catch (e) { 
+    errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
 }
 const handleSendCode = async () => {
   if (!form.value.phone.trim()) { errorMessage.value = t('phonePlaceholder'); return }
@@ -442,7 +448,12 @@ const handlePhoneLogin = async () => {
   try {
     const r = await loginWithPhone(form.value.phone, form.value.verificationCode)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
-    emit('login', { userId: r.userId, username: r.username, nickname: r.nickname || r.username, email: r.email, phone: r.phone, avatar: r.avatar })
+    emit('login', {
+      userId: r.userId, username: r.username, nickname: r.nickname || r.username,
+      email: r.email, phone: r.phone, avatar: r.avatar,
+      userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
+      permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
+    })
   } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
 }
 
