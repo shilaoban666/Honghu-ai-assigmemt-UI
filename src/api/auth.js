@@ -45,7 +45,7 @@ export const registerUser = async (data) => {
  * 用户登录 - 账号密码登录
  * @param {string} username - 用户名
  * @param {string} password - 密码
- * @returns {Promise}
+ * @returns {Promise<UserResponse>} 包含 identity, identityLabel, permissionSummary, availableModels
  */
 export const loginWithPassword = async (username, password) => {
   try {
@@ -53,9 +53,35 @@ export const loginWithPassword = async (username, password) => {
       username,
       password
     })
+
+    const data = response.data
+    console.info('登录失败:', data)
+    if (data && data.success === false) {
+      throw { status: 400, message: data.errorMessage || '登录失败' }
+    }
+    return data
+  } catch (error) {
+    if (error.status && !error.response) throw error          // 已是手动throw的对象，直接往上抛
+    const serverData = error.response?.data
+    throw {
+      status: error.response?.status || 500,
+      message: serverData?.errorMessage || serverData?.message || error.message
+    }
+  }
+}
+
+/**
+ * 游客登录
+ * @returns {Promise<UserResponse>} 游客身份的 UserResponse
+ */
+export const loginAsGuest = async () => {
+  try {
+    const response = await authClient.post('/users/login', {
+      guestLogin: true
+    })
     return response.data
   } catch (error) {
-    console.error('登录失败:', error.response?.data || error.message)
+    console.error('游客登录失败:', error.response?.data || error.message)
     throw {
       status: error.response?.status || 500,
       message: error.response?.data?.message || error.message

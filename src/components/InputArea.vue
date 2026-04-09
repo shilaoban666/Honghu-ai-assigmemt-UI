@@ -35,7 +35,7 @@
             @click.stop="showModelPicker = !showModelPicker"
             :title="selectedModelLabel"
           >
-            <span class="model-icon-emoji">{{ selectedModelIcon }}</span>
+            <span :class="['provider-icon', 'pi-' + selectedModelIcon]"></span>
           </button>
 
           <!-- 联网搜索 -->
@@ -76,17 +76,53 @@
             <input v-model="modelSearch" class="picker-input" :placeholder="t('searchModel')" />
           </div>
           <div class="picker-list">
-            <div
-              v-for="m in filteredModels"
-              :key="m.value"
-              class="picker-item"
-              :class="{ selected: selectedModel === m.value }"
-              @click="selectModel(m)"
-            >
-              <span class="picker-item-icon">{{ m.icon }}</span>
-              <span class="picker-item-name">{{ m.label }}</span>
-              <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-            </div>
+            <!-- 第一梯队 -->
+            <template v-if="tier1Models.length > 0 && !modelSearch">
+              <div class="picker-group-label">{{ t('tier1') }}  ⚡</div>
+              <div
+                v-for="m in tier1Models"
+                :key="m.value"
+                class="picker-item"
+                :class="{ selected: selectedModel === m.value }"
+                @click="selectModel(m)"
+              >
+                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="m.local" class="picker-badge local">Local</span>
+                <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </template>
+            <!-- 第二梯队 -->
+            <template v-if="tier2Models.length > 0 && !modelSearch">
+              <div class="picker-group-label">{{ t('tier2') }}</div>
+              <div
+                v-for="m in tier2Models"
+                :key="m.value"
+                class="picker-item"
+                :class="{ selected: selectedModel === m.value }"
+                @click="selectModel(m)"
+              >
+                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="m.local" class="picker-badge local">Local</span>
+                <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </template>
+            <!-- 搜索结果（不分组） -->
+            <template v-if="modelSearch">
+              <div
+                v-for="m in filteredModels"
+                :key="m.value"
+                class="picker-item"
+                :class="{ selected: selectedModel === m.value }"
+                @click="selectModel(m)"
+              >
+                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="m.local" class="picker-badge local">Local</span>
+                <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </template>
           </div>
         </div>
       </Transition>
@@ -120,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useChat } from '@/stores/chatStore'
 import { persistentStreamChat } from '@/api/chat'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
@@ -150,42 +186,86 @@ const removeSkillTag = (t) => {
   activeSkillTags.value = activeSkillTags.value.filter(x => x !== t)
 }
 
-// 模型数据
-const models = [
-  { value: null,                  label: '默认模型',          icon: '🤖', group: 'recommended' },
-  { value: 'claude-opus-4-6',    label: 'Claude Opus 4.6',   icon: '🟣', group: 'recommended' },
-  { value: 'claude-haiku-4-5',   label: 'Claude Haiku 4.5',  icon: '🟣', group: 'recommended' },
-  { value: 'gpt-5.4',            label: 'GPT-5.4',           icon: '🟢', group: 'recommended' },
-  { value: 'gpt-5.3-codex',      label: 'GPT-5.3-Codex',     icon: '🟢', group: 'recommended' },
-  { value: 'claude-sonnet-4-6',  label: 'Claude Sonnet 4.6',icon: '🟣', group: 'recommended' },
-  { value: 'deepseek-r1:8b',     label: 'DeepSeek R1 8B',    icon: '🔵', group: 'other' },
-  { value: 'gemini-3.1-pro',     label: 'Gemini 3.1 Pro',    icon: '✦',  group: 'other' },
-  { value: 'gemini-3-flash',     label: 'Gemini 3 Flash',    icon: '✦',  group: 'other' },
-  { value: 'gemini-3-pro',       label: 'Gemini 3 Pro',      icon: '✦',  group: 'other' },
-  { value: 'gemini-2.5-pro',     label: 'Gemini 2.5 Pro',    icon: '✦',  group: 'other' },
-  { value: 'gpt-5.1',            label: 'GPT-5.1',           icon: '🟢', group: 'other' },
-  { value: 'gpt-5-mini',         label: 'GPT-5 mini',        icon: '🟢', group: 'other' },
-  { value: 'gpt-5.1-codex',      label: 'GPT-5.1-Codex',     icon: '🟢', group: 'other' },
-  { value: 'gpt-5.1-codex-max',  label: 'GPT-5.1-Codex-Max', icon: '🟢', group: 'other' },
-  { value: 'gpt-4o',             label: 'GPT-4o',            icon: '🟢', group: 'other' },
-  { value: 'gpt-4.1',            label: 'GPT-4.1',           icon: '🟢', group: 'other' },
+// Provider 图标映射 (provider_code -> CSS class)
+const providerMeta = {
+  'openai':    { cls: 'pi-openai',    label: 'OpenAI' },
+  'anthropic': { cls: 'pi-anthropic', label: 'Anthropic' },
+  'google':    { cls: 'pi-google',    label: 'Google' },
+  'deepseek':  { cls: 'pi-deepseek',  label: 'DeepSeek' },
+  'ollama':    { cls: 'pi-ollama',    label: 'Ollama' },
+  'meta':      { cls: 'pi-meta',      label: 'Meta' },
+  'zhipu':     { cls: 'pi-zhipu',     label: '智谱' },
+}
+
+// 从 provider_code 中提取 provider 关键词
+const getProvider = (code) => {
+  if (!code) return 'openai'
+  const c = code.toLowerCase()
+  if (c.includes('anthropic') || c.includes('claude')) return 'anthropic'
+  if (c.includes('google') || c.includes('gemini')) return 'google'
+  if (c.includes('deepseek')) return 'deepseek'
+  if (c.includes('ollama')) return 'ollama'
+  if (c.includes('meta') || c.includes('llama')) return 'meta'
+  if (c.includes('zhipu') || c.includes('glm')) return 'zhipu'
+  return 'openai'
+}
+
+// 从模型名推断 provider
+const getProviderFromModel = (modelCode) => {
+  if (!modelCode) return 'openai'
+  const c = modelCode.toLowerCase()
+  if (c.includes('claude')) return 'anthropic'
+  if (c.includes('gemini')) return 'google'
+  if (c.includes('deepseek')) return 'deepseek'
+  if (c.includes('gpt') || c.includes('o1') || c.includes('o3') || c.includes('codex')) return 'openai'
+  if (c.includes('llama')) return 'meta'
+  if (c.includes('glm')) return 'zhipu'
+  return 'ollama'
+}
+
+// 默认模型（后端不可用时的回退）
+const fallbackModels = [
+  { value: 'deepseek-r1:8b',     label: 'DeepSeek R1 8B',    provider: 'deepseek', level: 2, local: true },
+  { value: 'claude-sonnet-4-6',  label: 'Claude Sonnet 4.6', provider: 'anthropic', level: 1, local: false },
+  { value: 'gpt-4o',             label: 'GPT-4o',            provider: 'openai',    level: 1, local: false },
+  { value: 'gemini-2.5-pro',     label: 'Gemini 2.5 Pro',    provider: 'google',    level: 1, local: false },
 ]
+
+// 从 chatStore.availableModels 构建模型列表
+const models = computed(() => {
+  const storeModels = chatStore.availableModels
+  if (storeModels && storeModels.length > 0) {
+    return storeModels.map(m => ({
+      value: m.modelCode,
+      label: m.displayName || m.modelCode,
+      provider: getProvider(m.providerCode) || getProviderFromModel(m.modelCode),
+      level: m.level || 2,
+      local: m.localModel || false,
+      stream: m.supportsStream !== false,
+    }))
+  }
+  return fallbackModels
+})
+
+// 第一梯队 + 第二梯队分组
+const tier1Models = computed(() => models.value.filter(m => m.level === 1))
+const tier2Models = computed(() => models.value.filter(m => m.level !== 1))
 
 const selectedModel = ref(null)
 
 const selectedModelIcon = computed(() => {
-  const m = models.find(x => x.value === selectedModel.value)
-  return m ? m.icon : '🤖'
+  const m = models.value.find(x => x.value === selectedModel.value)
+  return m ? m.provider : 'openai'
 })
 const selectedModelLabel = computed(() => {
-  const m = models.find(x => x.value === selectedModel.value)
+  const m = models.value.find(x => x.value === selectedModel.value)
   return m ? m.label : t('defaultModel')
 })
 
 const filteredModels = computed(() => {
   const q = modelSearch.value.toLowerCase()
-  if (!q) return models
-  return models.filter(m => m.label.toLowerCase().includes(q))
+  if (!q) return models.value
+  return models.value.filter(m => m.label.toLowerCase().includes(q) || (m.value || '').toLowerCase().includes(q))
 })
 
 const selectModel = (m) => {
@@ -359,9 +439,123 @@ const autoResize = (e) => {
   color: var(--primary-color);
 }
 
-.model-icon-emoji {
-  font-size: 20px;
-  line-height: 1;
+/* ─── Provider 官方图标（CSS 绘制） ─── */
+.provider-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* OpenAI — 黑色螺旋风格 */
+.pi-openai {
+  background-color: #000;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.718.413a6.004 6.004 0 00-5.734 4.176 5.988 5.988 0 00-3.997 2.9 6.049 6.049 0 00.742 7.093 5.98 5.98 0 00.51 4.911 6.051 6.051 0 006.515 2.9A5.985 5.985 0 0013.26 23.6a6.004 6.004 0 005.733-4.178 5.99 5.99 0 003.997-2.9 6.032 6.032 0 00-.708-6.701zM13.26 22.43a4.476 4.476 0 01-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 00.392-.681v-6.737l2.02 1.168a.071.071 0 01.038.052v5.583a4.504 4.504 0 01-4.494 4.494zM3.6 18.304a4.47 4.47 0 01-.535-3.014l.142.085 4.783 2.759a.771.771 0 00.78 0l5.843-3.369v2.332a.08.08 0 01-.033.062L9.74 19.95a4.5 4.5 0 01-6.14-1.646zM2.34 7.896a4.485 4.485 0 012.366-1.973V11.6a.766.766 0 00.388.676l5.815 3.355-2.02 1.168a.076.076 0 01-.071 0l-4.83-2.786A4.504 4.504 0 012.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 01.071 0l4.83 2.791a4.494 4.494 0 01-.676 8.105v-5.678a.79.79 0 00-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 00-.785 0L9.409 9.23V6.897a.066.066 0 01.028-.061l4.83-2.787a4.5 4.5 0 016.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 01-.038-.057V6.075a4.5 4.5 0 017.375-3.453l-.142.08L8.704 5.46a.795.795 0 00-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.718.413a6.004 6.004 0 00-5.734 4.176 5.988 5.988 0 00-3.997 2.9 6.049 6.049 0 00.742 7.093 5.98 5.98 0 00.51 4.911 6.051 6.051 0 006.515 2.9A5.985 5.985 0 0013.26 23.6a6.004 6.004 0 005.733-4.178 5.99 5.99 0 003.997-2.9 6.032 6.032 0 00-.708-6.701zM13.26 22.43a4.476 4.476 0 01-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 00.392-.681v-6.737l2.02 1.168a.071.071 0 01.038.052v5.583a4.504 4.504 0 01-4.494 4.494zM3.6 18.304a4.47 4.47 0 01-.535-3.014l.142.085 4.783 2.759a.771.771 0 00.78 0l5.843-3.369v2.332a.08.08 0 01-.033.062L9.74 19.95a4.5 4.5 0 01-6.14-1.646zM2.34 7.896a4.485 4.485 0 012.366-1.973V11.6a.766.766 0 00.388.676l5.815 3.355-2.02 1.168a.076.076 0 01-.071 0l-4.83-2.786A4.504 4.504 0 012.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 01.071 0l4.83 2.791a4.494 4.494 0 01-.676 8.105v-5.678a.79.79 0 00-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 00-.785 0L9.409 9.23V6.897a.066.066 0 01.028-.061l4.83-2.787a4.5 4.5 0 016.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 01-.038-.057V6.075a4.5 4.5 0 017.375-3.453l-.142.08L8.704 5.46a.795.795 0 00-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 16px;
+  mask-size: 16px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* Anthropic — 橙棕色 */
+.pi-anthropic {
+  background-color: #D4A27F;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.827 3.52h3.603L24 20.48h-3.603l-6.57-16.96zm-7.258 0h3.767L16.906 20.48h-3.674l-1.508-4.065H5.242L3.674 20.48H0l6.569-16.96zm1.04 3.781L5.246 13.58h4.755L7.609 7.301z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.827 3.52h3.603L24 20.48h-3.603l-6.57-16.96zm-7.258 0h3.767L16.906 20.48h-3.674l-1.508-4.065H5.242L3.674 20.48H0l6.569-16.96zm1.04 3.781L5.246 13.58h4.755L7.609 7.301z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 16px;
+  mask-size: 16px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* Google / Gemini — 蓝色星形 */
+.pi-google {
+  background: linear-gradient(135deg, #4285F4, #EA4335, #FBBC05, #34A853);
+  border-radius: 50%;
+}
+.pi-google::after {
+  content: '✦';
+  font-size: 13px;
+  color: #fff;
+}
+
+/* DeepSeek — 蓝色 */
+.pi-deepseek {
+  background-color: #4D6BFE;
+  border-radius: 50%;
+}
+.pi-deepseek::after {
+  content: 'D';
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Ollama — 白+黑框 */
+.pi-ollama {
+  background-color: #1a1a1a;
+  border-radius: 50%;
+}
+.pi-ollama::after {
+  content: '🦙';
+  font-size: 13px;
+}
+
+/* Meta — 蓝色 */
+.pi-meta {
+  background-color: #0668E1;
+  border-radius: 50%;
+}
+.pi-meta::after {
+  content: 'M';
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 智谱 — 紫色 */
+.pi-zhipu {
+  background-color: #6B4FBB;
+  border-radius: 50%;
+}
+.pi-zhipu::after {
+  content: 'Z';
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ─── 模型选择器分组标签 ─── */
+.picker-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  padding: 8px 14px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.picker-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.picker-badge.local {
+  background: rgba(77, 107, 254, 0.12);
+  color: #4D6BFE;
 }
 
 /* ─── 发送按钮 ─── */
@@ -461,12 +655,6 @@ const autoResize = (e) => {
   background: var(--hover-bg-medium);
 }
 
-.picker-item-icon {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
-  flex-shrink: 0;
-}
 .picker-item-name {
   flex: 1;
   font-size: 13px;
