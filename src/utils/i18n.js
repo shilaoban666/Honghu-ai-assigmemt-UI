@@ -129,6 +129,10 @@ const translations = {
     inputPlaceholder: '从任何想法开始... 按 Ctrl Enter 换行...',
     webSearch: '联网搜索',
     uploadFile: '上传文件',
+    uploadImage: '上传图片',
+    uploadFileOption: '上传文件',
+    screenshot: '截屏',
+    takePhoto: '拍照',
     skillStore: '技能商店',
     searchModel: '搜索模型...',
     addSkillsForAI: '为 AI 添加技能',
@@ -209,6 +213,8 @@ const translations = {
     // 模型械队
     tier1: '第一梯队',
     tier2: '第二梯队',
+    tier3: '第三梯队',
+    tier4: '第四梯队',
     localModel: '本地模型',
   },
   en: {
@@ -295,6 +301,10 @@ const translations = {
     inputPlaceholder: 'Start from any idea... Press Ctrl Enter for new line...',
     webSearch: 'Web Search',
     uploadFile: 'Upload File',
+    uploadImage: 'Upload Image',
+    uploadFileOption: 'Upload File',
+    screenshot: 'Screenshot',
+    takePhoto: 'Take Photo',
     skillStore: 'Skill Store',
     searchModel: 'Search models...',
     addSkillsForAI: 'Add skills for AI',
@@ -370,6 +380,8 @@ const translations = {
     // Model tiers
     tier1: 'Tier 1',
     tier2: 'Tier 2',
+    tier3: 'Tier 3',
+    tier4: 'Tier 4',
     localModel: 'Local',
   },
   ja: {
