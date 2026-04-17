@@ -1,16 +1,38 @@
 ﻿<template>
   <div class="input-section" @click="closeAllPopups">
-    <!-- 文件预览 -->
-    <div v-if="attachedFiles.length > 0" class="files-preview">
-      <div v-for="(file, index) in attachedFiles" :key="index" class="file-chip">
-        <span class="file-chip-icon">📄</span>
-        <span class="file-chip-name">{{ file.name }}</span>
-        <button @click="removeFile(index)" class="file-chip-remove">✕</button>
-      </div>
-    </div>
-
     <!-- 主输入卡片 -->
-    <div class="input-card" :class="{ focused: isFocused }">
+    <div class="input-card" :class="{ focused: isFocused, 'has-files': attachedFiles.length > 0 }">
+      <!-- 文件预览（在输入框内部，Claude 风格） -->
+      <TransitionGroup name="file-preview" tag="div" class="files-preview-inner" v-show="attachedFiles.length > 0">
+        <div v-for="(file, index) in attachedFiles" :key="file.name + index" class="file-card">
+          <!-- 图片缩略图 -->
+          <template v-if="isImageFile(file)">
+            <div class="file-card-thumb">
+              <img :src="getFilePreviewUrl(file)" alt="" class="thumb-img" />
+              <button @click="removeFile(index)" class="file-card-close">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <span class="file-card-name">{{ truncateName(file.name) }}</span>
+          </template>
+          <!-- 普通文件 -->
+          <template v-else>
+            <div class="file-card-doc">
+              <span class="file-card-doc-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <div class="file-card-doc-info">
+                <span class="file-card-doc-name">{{ truncateName(file.name) }}</span>
+                <span class="file-card-doc-size">{{ formatSize(file.size) }}</span>
+              </div>
+              <button @click="removeFile(index)" class="file-card-close doc-close">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </template>
+        </div>
+      </TransitionGroup>
+
       <!-- 文本框 -->
       <textarea
         ref="textareaRef"
@@ -35,7 +57,7 @@
             @click.stop="showModelPicker = !showModelPicker"
             :title="selectedModelLabel"
           >
-            <span :class="['provider-icon', 'pi-' + selectedModelIcon]"></span>
+            <img :src="selectedModelIconUrl" class="provider-icon" alt="" />
           </button>
 
           <!-- 联网搜索 -->
@@ -43,11 +65,38 @@
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="4" ry="10" stroke-width="1.8"/><line x1="2" y1="12" x2="22" y2="12" stroke-width="1.8"/></svg>
           </button>
 
-          <!-- 上传文件 -->
-          <button class="tool-btn" @click.stop="triggerFileInput" :title="t('uploadFile')">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21.44 11.05l-9.19 9.19a6.01 6.01 0 01-8.49-8.49l9.19-9.19a4.008 4.008 0 015.66 5.66l-9.2 9.19a2.003 2.003 0 01-2.83-2.83l8.49-8.48"/></svg>
-          </button>
-          <input ref="fileInput" type="file" @change="handleFileSelect" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none" multiple />
+          <!-- 上传按钮 + 下拉菜单 -->
+          <div class="upload-dropdown-wrapper" ref="uploadDropdownRef">
+            <button class="tool-btn" :class="{ active: showUploadMenu }" @click.stop="showUploadMenu = !showUploadMenu" :title="t('uploadFile')">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21.44 11.05l-9.19 9.19a6.01 6.01 0 01-8.49-8.49l9.19-9.19a4.008 4.008 0 015.66 5.66l-9.2 9.19a2.003 2.003 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <!-- 上传下拉菜单 -->
+            <Transition name="upload-pop">
+              <div v-if="showUploadMenu" class="upload-menu" @click.stop>
+                <button class="upload-menu-item" @click="triggerImageInput">
+                  <span class="upload-menu-icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 15l-5-5L5 21"/></svg>
+                  </span>
+                  <span class="upload-menu-text">{{ t('uploadImage') }}</span>
+                </button>
+                <button class="upload-menu-item" @click="triggerFileInput">
+                  <span class="upload-menu-icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                  <span class="upload-menu-text">{{ t('uploadFileOption') }}</span>
+                </button>
+                <button class="upload-menu-item" @click="triggerScreenCapture">
+                  <span class="upload-menu-icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path v-if="!isMobileDevice" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle v-if="!isMobileDevice" cx="12" cy="13" r="4" stroke-width="1.8"/><path v-if="isMobileDevice" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle v-if="isMobileDevice" cx="12" cy="13" r="4" stroke-width="1.8"/></svg>
+                  </span>
+                  <span class="upload-menu-text">{{ isMobileDevice ? t('takePhoto') : t('screenshot') }}</span>
+                </button>
+              </div>
+            </Transition>
+          </div>
+          <input ref="fileInput" type="file" @change="handleFileSelect" accept="*/*" style="display:none" multiple />
+          <input ref="imageInput" type="file" @change="handleImageSelect" accept="image/*" style="display:none" multiple />
+          <input ref="cameraInput" type="file" @change="handleCameraCapture" accept="image/*" capture="environment" style="display:none" />
 
           <!-- 技能商店 -->
           <button class="tool-btn" @click.stop="showSkillStore = true" :title="t('skillStore')">
@@ -78,31 +127,73 @@
           <div class="picker-list">
             <!-- 第一梯队 -->
             <template v-if="tier1Models.length > 0 && !modelSearch">
-              <div class="picker-group-label">{{ t('tier1') }}  ⚡</div>
+              <div class="picker-group-label">{{ t('tier1') }} ⚡⚡⚡</div>
               <div
-                v-for="m in tier1Models"
+                v-for="(m, idx) in tier1Models"
                 :key="m.value"
                 class="picker-item"
                 :class="{ selected: selectedModel === m.value }"
+                :style="{ '--item-index': idx }"
                 @click="selectModel(m)"
               >
-                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <img :src="getModelIconUrl(m.value, m.provider)" class="provider-icon" alt="" />
                 <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="getModelRank(m.value) === 1" class="medal-badge gold">1st</span>
+                <span v-else-if="getModelRank(m.value) === 2" class="medal-badge silver">2nd</span>
+                <span v-else-if="getModelRank(m.value) === 3" class="medal-badge bronze">3rd</span>
                 <span v-if="m.local" class="picker-badge local">Local</span>
                 <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
               </div>
             </template>
             <!-- 第二梯队 -->
             <template v-if="tier2Models.length > 0 && !modelSearch">
-              <div class="picker-group-label">{{ t('tier2') }}</div>
+              <div class="picker-group-label">{{ t('tier2') }} ⚡⚡</div>
               <div
-                v-for="m in tier2Models"
+                v-for="(m, idx) in tier2Models"
                 :key="m.value"
                 class="picker-item"
                 :class="{ selected: selectedModel === m.value }"
+                :style="{ '--item-index': idx + tier1Models.length }"
                 @click="selectModel(m)"
               >
-                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <img :src="getModelIconUrl(m.value, m.provider)" class="provider-icon" alt="" />
+                <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="getModelRank(m.value) === 1" class="medal-badge gold">1st</span>
+                <span v-else-if="getModelRank(m.value) === 2" class="medal-badge silver">2nd</span>
+                <span v-else-if="getModelRank(m.value) === 3" class="medal-badge bronze">3rd</span>
+                <span v-if="m.local" class="picker-badge local">Local</span>
+                <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </template>
+            <!-- 第三梯队 -->
+            <template v-if="tier3Models.length > 0 && !modelSearch">
+              <div class="picker-group-label">{{ t('tier3') }}⚡</div>
+              <div
+                v-for="(m, idx) in tier3Models"
+                :key="m.value"
+                class="picker-item"
+                :class="{ selected: selectedModel === m.value }"
+                :style="{ '--item-index': idx + tier1Models.length + tier2Models.length }"
+                @click="selectModel(m)"
+              >
+                <img :src="getModelIconUrl(m.value, m.provider)" class="provider-icon" alt="" />
+                <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="m.local" class="picker-badge local">Local</span>
+                <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </template>
+            <!-- 第四梯队 -->
+            <template v-if="tier4Models.length > 0 && !modelSearch">
+              <div class="picker-group-label">{{ t('tier4') }}</div>
+              <div
+                v-for="(m, idx) in tier4Models"
+                :key="m.value"
+                class="picker-item"
+                :class="{ selected: selectedModel === m.value }"
+                :style="{ '--item-index': idx + tier1Models.length + tier2Models.length + tier3Models.length }"
+                @click="selectModel(m)"
+              >
+                <img :src="getModelIconUrl(m.value, m.provider)" class="provider-icon" alt="" />
                 <span class="picker-item-name">{{ m.label }}</span>
                 <span v-if="m.local" class="picker-badge local">Local</span>
                 <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -111,14 +202,18 @@
             <!-- 搜索结果（不分组） -->
             <template v-if="modelSearch">
               <div
-                v-for="m in filteredModels"
+                v-for="(m, idx) in filteredModels"
                 :key="m.value"
                 class="picker-item"
                 :class="{ selected: selectedModel === m.value }"
+                :style="{ '--item-index': idx }"
                 @click="selectModel(m)"
               >
-                <span :class="['provider-icon', 'pi-' + m.provider]"></span>
+                <img :src="getModelIconUrl(m.value, m.provider)" class="provider-icon" alt="" />
                 <span class="picker-item-name">{{ m.label }}</span>
+                <span v-if="getModelRank(m.value) === 1" class="medal-badge gold">1st</span>
+                <span v-else-if="getModelRank(m.value) === 2" class="medal-badge silver">2nd</span>
+                <span v-else-if="getModelRank(m.value) === 3" class="medal-badge bronze">3rd</span>
                 <span v-if="m.local" class="picker-badge local">Local</span>
                 <svg v-if="selectedModel === m.value" class="picker-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
               </div>
@@ -152,14 +247,23 @@
 
     <!-- 技能商店弹窗 -->
     <SkillStoreDialog :visible="showSkillStore" @close="showSkillStore = false" />
+
+    <!-- 截屏编辑器 -->
+    <ScreenshotEditor
+      :visible="showScreenshotEditor"
+      :image="screenshotImage"
+      @confirm="handleScreenshotConfirm"
+      @cancel="showScreenshotEditor = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useChat } from '@/stores/chatStore'
 import { persistentStreamChat } from '@/api/chat'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
+import ScreenshotEditor from '@/components/ScreenshotEditor.vue'
 import { t } from '@/utils/i18n'
 
 defineProps({
@@ -171,14 +275,25 @@ const chatStore = useChat()
 const message = ref('')
 const attachedFiles = ref([])
 const fileInput = ref(null)
+const imageInput = ref(null)
+const cameraInput = ref(null)
 const textareaRef = ref(null)
 const isFocused = ref(false)
+const uploadDropdownRef = ref(null)
 
 // 弹出面板状态
 const showModelPicker = ref(false)
 const showSkillStore = ref(false)
+const showUploadMenu = ref(false)
 const webSearchEnabled = ref(false)
 const modelSearch = ref('')
+
+// 截屏编辑器
+const showScreenshotEditor = ref(false)
+const screenshotImage = ref(null)
+
+// 移动端检测
+const isMobileDevice = computed(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
 
 // 技能标签
 const activeSkillTags = ref([])
@@ -186,15 +301,48 @@ const removeSkillTag = (t) => {
   activeSkillTags.value = activeSkillTags.value.filter(x => x !== t)
 }
 
-// Provider 图标映射 (provider_code -> CSS class)
-const providerMeta = {
-  'openai':    { cls: 'pi-openai',    label: 'OpenAI' },
-  'anthropic': { cls: 'pi-anthropic', label: 'Anthropic' },
-  'google':    { cls: 'pi-google',    label: 'Google' },
-  'deepseek':  { cls: 'pi-deepseek',  label: 'DeepSeek' },
-  'ollama':    { cls: 'pi-ollama',    label: 'Ollama' },
-  'meta':      { cls: 'pi-meta',      label: 'Meta' },
-  'zhipu':     { cls: 'pi-zhipu',     label: '智谱' },
+// LobeHub 图标 CDN 基础 URL
+const ICON_CDN = 'https://registry.npmmirror.com/@lobehub/icons-static-svg/latest/files/icons'
+
+// Provider → LobeHub icon slug 映射
+const providerIconSlug = {
+  'openai':    'openai',
+  'anthropic': 'anthropic',
+  'google':    'google',
+  'deepseek':  'deepseek',
+  'ollama':    'ollama',
+  'meta':      'meta',
+  'zhipu':     'zhipu',
+  'xai':       'xai',
+  'kimi':      'kimi',
+  'minimax':   'minimax',
+  'xiaomi':    'openai',
+  'alibaba':   'qwen',
+}
+
+// 模型名 → 更精确的 icon slug（优先匹配模型级别图标）
+const modelIconSlug = {
+  'claude':   'claude',
+  'gemini':   'gemini',
+  'grok':     'grok',
+  'kimi':     'kimi',
+  'minimax':  'minimax',
+  'glm':      'chatglm',
+  'moonshot': 'moonshot',
+  'qwen':     'qwen',
+  'tongyi':   'qwen',
+}
+
+// 获取模型图标 URL
+const getModelIconUrl = (modelCode, provider) => {
+  if (modelCode) {
+    const c = modelCode.toLowerCase()
+    for (const [keyword, slug] of Object.entries(modelIconSlug)) {
+      if (c.includes(keyword)) return `${ICON_CDN}/${slug}.svg`
+    }
+  }
+  const slug = providerIconSlug[provider] || 'openai'
+  return `${ICON_CDN}/${slug}.svg`
 }
 
 // 从 provider_code 中提取 provider 关键词
@@ -207,6 +355,10 @@ const getProvider = (code) => {
   if (c.includes('ollama')) return 'ollama'
   if (c.includes('meta') || c.includes('llama')) return 'meta'
   if (c.includes('zhipu') || c.includes('glm')) return 'zhipu'
+  if (c.includes('xai') || c.includes('grok')) return 'xai'
+  if (c.includes('moonshot') || c.includes('kimi')) return 'kimi'
+  if (c.includes('minimax')) return 'minimax'
+  if (c.includes('alibaba') || c.includes('qwen') || c.includes('tongyi')) return 'alibaba'
   return 'openai'
 }
 
@@ -220,6 +372,11 @@ const getProviderFromModel = (modelCode) => {
   if (c.includes('gpt') || c.includes('o1') || c.includes('o3') || c.includes('codex')) return 'openai'
   if (c.includes('llama')) return 'meta'
   if (c.includes('glm')) return 'zhipu'
+  if (c.includes('grok')) return 'xai'
+  if (c.includes('kimi') || c.includes('moonshot')) return 'kimi'
+  if (c.includes('minimax')) return 'minimax'
+  if (c.includes('mimo')) return 'xiaomi'
+  if (c.includes('qwen') || c.includes('tongyi')) return 'alibaba'
   return 'ollama'
 }
 
@@ -242,20 +399,35 @@ const models = computed(() => {
       level: m.level || 2,
       local: m.localModel || false,
       stream: m.supportsStream !== false,
+      score: m.score ?? 0,
     }))
   }
   return fallbackModels
 })
 
-// 第一梯队 + 第二梯队分组
+// 按分数排序取 Top 3 的模型 value 集合（用于奖牌标识）
+const top3ModelValues = computed(() => {
+  const sorted = [...models.value].filter(m => m.score > 0).sort((a, b) => b.score - a.score)
+  return sorted.slice(0, 3).map(m => m.value)
+})
+
+// 获取模型排名（1/2/3），不在前三返回 0
+const getModelRank = (modelValue) => {
+  const idx = top3ModelValues.value.indexOf(modelValue)
+  return idx >= 0 ? idx + 1 : 0
+}
+
+// 第一 ~ 第四梯队分组
 const tier1Models = computed(() => models.value.filter(m => m.level === 1))
-const tier2Models = computed(() => models.value.filter(m => m.level !== 1))
+const tier2Models = computed(() => models.value.filter(m => m.level === 2))
+const tier3Models = computed(() => models.value.filter(m => m.level === 3))
+const tier4Models = computed(() => models.value.filter(m => m.level === 4))
 
 const selectedModel = ref(null)
 
-const selectedModelIcon = computed(() => {
+const selectedModelIconUrl = computed(() => {
   const m = models.value.find(x => x.value === selectedModel.value)
-  return m ? m.provider : 'openai'
+  return m ? getModelIconUrl(m.value, m.provider) : `${ICON_CDN}/openai.svg`
 })
 const selectedModelLabel = computed(() => {
   const m = models.value.find(x => x.value === selectedModel.value)
@@ -276,10 +448,27 @@ const selectModel = (m) => {
 
 const closeAllPopups = () => {
   showModelPicker.value = false
+  showUploadMenu.value = false
 }
 
+// 点击外部关闭上传菜单
+function handleClickOutside(e) {
+  if (uploadDropdownRef.value && !uploadDropdownRef.value.contains(e.target)) {
+    showUploadMenu.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onUnmounted(() => document.removeEventListener('click', handleClickOutside))
+
 // 文件处理
-const triggerFileInput = () => fileInput.value?.click()
+const triggerFileInput = () => {
+  showUploadMenu.value = false
+  fileInput.value?.click()
+}
+const triggerImageInput = () => {
+  showUploadMenu.value = false
+  imageInput.value?.click()
+}
 
 const handleFileSelect = (event) => {
   Array.from(event.target.files || []).forEach(file => {
@@ -288,7 +477,98 @@ const handleFileSelect = (event) => {
   event.target.value = ''
 }
 
+const handleImageSelect = (event) => {
+  Array.from(event.target.files || []).forEach(file => {
+    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+  })
+  event.target.value = ''
+}
+
+const handleCameraCapture = (event) => {
+  const file = event.target.files?.[0]
+  if (file) {
+    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+  }
+  event.target.value = ''
+}
+
+// 截屏 / 拍照
+const triggerScreenCapture = async () => {
+  showUploadMenu.value = false
+  if (isMobileDevice.value) {
+    cameraInput.value?.click()
+    return
+  }
+  // PC 端：Screen Capture API
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+    const track = stream.getVideoTracks()[0]
+    const video = document.createElement('video')
+    video.srcObject = stream
+    video.autoplay = true
+    await new Promise((resolve) => { video.onloadedmetadata = resolve })
+    await video.play()
+
+    // 等待一帧渲染
+    await new Promise(r => requestAnimationFrame(r))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+
+    track.stop()
+    stream.getTracks().forEach(t => t.stop())
+
+    // 创建 Image 对象传给编辑器
+    const img = new Image()
+    img.onload = () => {
+      screenshotImage.value = img
+      showScreenshotEditor.value = true
+    }
+    img.src = canvas.toDataURL('image/png')
+  } catch (err) {
+    // 用户取消了屏幕选择
+    if (err.name !== 'NotAllowedError') {
+      console.error('Screenshot failed:', err)
+    }
+  }
+}
+
+// 截屏编辑器确认
+const handleScreenshotConfirm = (file) => {
+  attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+  showScreenshotEditor.value = false
+  screenshotImage.value = null
+}
+
 const removeFile = (index) => attachedFiles.value.splice(index, 1)
+
+// 文件预览辅助
+const isImageFile = (f) => {
+  if (f.type === 'image') return true
+  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(f.name)
+}
+
+const filePreviewUrls = new WeakMap()
+const getFilePreviewUrl = (f) => {
+  if (filePreviewUrls.has(f.file)) return filePreviewUrls.get(f.file)
+  const url = URL.createObjectURL(f.file)
+  filePreviewUrls.set(f.file, url)
+  return url
+}
+
+const truncateName = (name) => {
+  if (name.length <= 18) return name
+  const ext = name.lastIndexOf('.') > 0 ? name.slice(name.lastIndexOf('.')) : ''
+  return name.slice(0, 14 - ext.length) + '…' + ext
+}
+
+const formatSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
 
 // 回车键处理
 const handleEnterKey = (e) => {
@@ -369,17 +649,184 @@ const autoResize = (e) => {
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1.5px solid var(--border-color);
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              max-height 0.4s cubic-bezier(0.4,0,0.2,1);
   overflow: visible;
   width: 100%;
   max-width: 780px;
 }
 .input-card.focused {
   border-color: var(--primary-color);
-  box-shadow: 0 2px 16px rgba(45,134,89,0.08);
+  box-shadow: 0 4px 24px rgba(45,134,89,0.1), 0 0 0 3px rgba(45,134,89,0.06);
+  transform: translateY(-1px);
+}
+
+/* ─── 文件预览（卡片内部 Claude 风格） ─── */
+.files-preview-inner {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px 6px;
+  position: relative;
+}
+
+.file-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fileCardIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 图片缩略图卡 */
+.file-card-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s;
+}
+.file-card-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.file-card-name {
+  font-size: 11px;
+  color: var(--text-sub);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* 关闭按钮 */
+.file-card-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+  backdrop-filter: blur(4px);
+}
+.file-card-thumb:hover .file-card-close,
+.file-card-doc:hover .file-card-close {
+  opacity: 1;
+  transform: scale(1);
+}
+.file-card-close:hover {
+  background: rgba(224,92,75,0.85);
+  transform: scale(1.15) !important;
+}
+
+/* 文档文件卡 */
+.file-card-doc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 32px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  min-width: 160px;
+  max-width: 220px;
+  transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s;
+}
+.file-card-doc:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.file-card-doc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--hover-bg);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+.file-card-doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.file-card-doc-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-card-doc-size {
+  font-size: 10px;
+  color: var(--text-sub);
+}
+.file-card-close.doc-close {
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%) scale(0.8);
+  background: rgba(0,0,0,0.08);
+  color: var(--text-sub);
+}
+.file-card-doc:hover .file-card-close.doc-close {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+.file-card-close.doc-close:hover {
+  background: rgba(224,92,75,0.15);
+  color: #e05c4b;
+  transform: translateY(-50%) scale(1.15) !important;
+}
+
+/* 文件卡片动画 */
+@keyframes fileCardIn {
+  0% { opacity: 0; transform: scale(0.7) translateY(8px); }
+  60% { opacity: 1; transform: scale(1.04) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.file-preview-enter-active {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.file-preview-leave-active {
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.file-preview-enter-from {
+  opacity: 0;
+  transform: scale(0.7) translateY(8px);
+}
+.file-preview-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(-4px);
 }
 
 /* ─── 文本框 ─── */
@@ -427,19 +874,25 @@ const autoResize = (e) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }
 .tool-btn:hover {
   background: var(--hover-bg-medium);
   color: var(--primary-color);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 4px 14px rgba(45, 134, 89, 0.12);
+}
+.tool-btn:active {
+  transform: scale(0.9);
+  transition-duration: 0.1s;
 }
 .tool-btn.active {
   background: var(--hover-bg-medium);
   color: var(--primary-color);
 }
 
-/* ─── Provider 官方图标（CSS 绘制） ─── */
+/* ─── Provider 官方图标（LobeHub CDN） ─── */
 .provider-icon {
   width: 20px;
   height: 20px;
@@ -448,92 +901,69 @@ const autoResize = (e) => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+  object-fit: contain;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.picker-item:hover .provider-icon {
+  transform: scale(1.18) rotate(-4deg);
 }
 
-/* OpenAI — 黑色螺旋风格 */
-.pi-openai {
-  background-color: #000;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.718.413a6.004 6.004 0 00-5.734 4.176 5.988 5.988 0 00-3.997 2.9 6.049 6.049 0 00.742 7.093 5.98 5.98 0 00.51 4.911 6.051 6.051 0 006.515 2.9A5.985 5.985 0 0013.26 23.6a6.004 6.004 0 005.733-4.178 5.99 5.99 0 003.997-2.9 6.032 6.032 0 00-.708-6.701zM13.26 22.43a4.476 4.476 0 01-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 00.392-.681v-6.737l2.02 1.168a.071.071 0 01.038.052v5.583a4.504 4.504 0 01-4.494 4.494zM3.6 18.304a4.47 4.47 0 01-.535-3.014l.142.085 4.783 2.759a.771.771 0 00.78 0l5.843-3.369v2.332a.08.08 0 01-.033.062L9.74 19.95a4.5 4.5 0 01-6.14-1.646zM2.34 7.896a4.485 4.485 0 012.366-1.973V11.6a.766.766 0 00.388.676l5.815 3.355-2.02 1.168a.076.076 0 01-.071 0l-4.83-2.786A4.504 4.504 0 012.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 01.071 0l4.83 2.791a4.494 4.494 0 01-.676 8.105v-5.678a.79.79 0 00-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 00-.785 0L9.409 9.23V6.897a.066.066 0 01.028-.061l4.83-2.787a4.5 4.5 0 016.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 01-.038-.057V6.075a4.5 4.5 0 017.375-3.453l-.142.08L8.704 5.46a.795.795 0 00-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.718.413a6.004 6.004 0 00-5.734 4.176 5.988 5.988 0 00-3.997 2.9 6.049 6.049 0 00.742 7.093 5.98 5.98 0 00.51 4.911 6.051 6.051 0 006.515 2.9A5.985 5.985 0 0013.26 23.6a6.004 6.004 0 005.733-4.178 5.99 5.99 0 003.997-2.9 6.032 6.032 0 00-.708-6.701zM13.26 22.43a4.476 4.476 0 01-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 00.392-.681v-6.737l2.02 1.168a.071.071 0 01.038.052v5.583a4.504 4.504 0 01-4.494 4.494zM3.6 18.304a4.47 4.47 0 01-.535-3.014l.142.085 4.783 2.759a.771.771 0 00.78 0l5.843-3.369v2.332a.08.08 0 01-.033.062L9.74 19.95a4.5 4.5 0 01-6.14-1.646zM2.34 7.896a4.485 4.485 0 012.366-1.973V11.6a.766.766 0 00.388.676l5.815 3.355-2.02 1.168a.076.076 0 01-.071 0l-4.83-2.786A4.504 4.504 0 012.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 01.071 0l4.83 2.791a4.494 4.494 0 01-.676 8.105v-5.678a.79.79 0 00-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 00-.785 0L9.409 9.23V6.897a.066.066 0 01.028-.061l4.83-2.787a4.5 4.5 0 016.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 01-.038-.057V6.075a4.5 4.5 0 017.375-3.453l-.142.08L8.704 5.46a.795.795 0 00-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z'/%3E%3C/svg%3E");
-  -webkit-mask-size: 16px;
-  mask-size: 16px;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+/* ─── 奖牌徽章（金银铜） ─── */
+.medal-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  position: relative;
+  overflow: hidden;
+  animation: medalPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.medal-badge::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+  animation: medalShine 2.8s ease-in-out infinite;
 }
 
-/* Anthropic — 橙棕色 */
-.pi-anthropic {
-  background-color: #D4A27F;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.827 3.52h3.603L24 20.48h-3.603l-6.57-16.96zm-7.258 0h3.767L16.906 20.48h-3.674l-1.508-4.065H5.242L3.674 20.48H0l6.569-16.96zm1.04 3.781L5.246 13.58h4.755L7.609 7.301z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.827 3.52h3.603L24 20.48h-3.603l-6.57-16.96zm-7.258 0h3.767L16.906 20.48h-3.674l-1.508-4.065H5.242L3.674 20.48H0l6.569-16.96zm1.04 3.781L5.246 13.58h4.755L7.609 7.301z'/%3E%3C/svg%3E");
-  -webkit-mask-size: 16px;
-  mask-size: 16px;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+/* 金牌 — 1st */
+.medal-badge.gold {
+  background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
+  color: #7A5C00;
+  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.5);
+  text-shadow: 0 1px 2px rgba(255, 215, 0, 0.3);
 }
 
-/* Google / Gemini — 蓝色星形 */
-.pi-google {
-  background: linear-gradient(135deg, #4285F4, #EA4335, #FBBC05, #34A853);
-  border-radius: 50%;
-}
-.pi-google::after {
-  content: '✦';
-  font-size: 13px;
-  color: #fff;
+/* 银牌 — 2nd */
+.medal-badge.silver {
+  background: linear-gradient(135deg, #E8E8E8, #B0B0B0, #D4D4D4);
+  color: #4A4A4A;
+  box-shadow: 0 2px 10px rgba(192, 192, 192, 0.45), inset 0 1px 0 rgba(255,255,255,0.6);
+  text-shadow: 0 1px 1px rgba(255,255,255,0.5);
 }
 
-/* DeepSeek — 蓝色 */
-.pi-deepseek {
-  background-color: #4D6BFE;
-  border-radius: 50%;
-}
-.pi-deepseek::after {
-  content: 'D';
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
+/* 铜牌 — 3rd */
+.medal-badge.bronze {
+  background: linear-gradient(135deg, #E8A87C, #CD7F32, #D4956B);
+  color: #5C3A1E;
+  box-shadow: 0 2px 10px rgba(205, 127, 50, 0.4), inset 0 1px 0 rgba(255,255,255,0.35);
+  text-shadow: 0 1px 1px rgba(205, 127, 50, 0.2);
 }
 
-/* Ollama — 白+黑框 */
-.pi-ollama {
-  background-color: #1a1a1a;
-  border-radius: 50%;
+@keyframes medalPop {
+  0% { opacity: 0; transform: scale(0) rotate(-15deg); }
+  60% { opacity: 1; transform: scale(1.2) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
 }
-.pi-ollama::after {
-  content: '🦙';
-  font-size: 13px;
-}
-
-/* Meta — 蓝色 */
-.pi-meta {
-  background-color: #0668E1;
-  border-radius: 50%;
-}
-.pi-meta::after {
-  content: 'M';
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* 智谱 — 紫色 */
-.pi-zhipu {
-  background-color: #6B4FBB;
-  border-radius: 50%;
-}
-.pi-zhipu::after {
-  content: 'Z';
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
+@keyframes medalShine {
+  0%, 75% { left: -60%; }
+  100% { left: 140%; }
 }
 
 /* ─── 模型选择器分组标签 ─── */
@@ -541,9 +971,10 @@ const autoResize = (e) => {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-sub);
-  padding: 8px 14px 4px;
+  padding: 10px 14px 5px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  animation: pickerItemSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .picker-badge {
@@ -570,12 +1001,43 @@ const autoResize = (e) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.send-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -100%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transition: left 0.5s;
+}
+.send-btn:hover:not(:disabled)::before {
+  left: 150%;
+}
+.send-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.send-btn:hover:not(:disabled)::after {
+  opacity: 1;
 }
 .send-btn:hover:not(:disabled) {
-  transform: scale(1.06);
-  box-shadow: 0 4px 14px rgba(45,134,89,0.25);
+  transform: scale(1.12) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(45,134,89,0.35), 0 0 0 3px rgba(45,134,89,0.1);
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.92);
+  box-shadow: 0 2px 8px rgba(45,134,89,0.2);
+  transition-duration: 0.1s;
 }
 .send-btn:disabled {
   opacity: 0.35;
@@ -597,20 +1059,26 @@ const autoResize = (e) => {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 10px;
-  width: 280px;
+  width: 290px;
   background: var(--bg-primary);
   border: 1.5px solid var(--border-color);
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.16), 0 4px 12px rgba(0,0,0,0.06);
   z-index: 100;
   overflow: hidden;
+  backdrop-filter: blur(12px);
 }
 
-.pop-enter-active,
-.pop-leave-active {
-  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+.pop-enter-active {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.pop-enter-from,
+.pop-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 1, 1);
+}
+.pop-enter-from {
+  opacity: 0;
+  transform: translateY(16px) scale(0.9);
+}
 .pop-leave-to {
   opacity: 0;
   transform: translateY(8px) scale(0.96);
@@ -644,16 +1112,51 @@ const autoResize = (e) => {
   align-items: center;
   gap: 10px;
   padding: 9px 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+  animation: pickerItemSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--item-index, 0) * 0.03s);
+  position: relative;
+}
+.picker-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--hover-bg);
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.picker-item:hover::before {
+  opacity: 1;
 }
 .picker-item:hover {
-  background: var(--hover-bg);
+  transform: translateX(4px);
+}
+.picker-item:active {
+  transform: translateX(4px) scale(0.97);
 }
 .picker-item.selected {
   background: var(--hover-bg-medium);
 }
+.picker-item.selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary-color);
+}
+
+@keyframes pickerItemSlide {
+  from { opacity: 0; transform: translateX(-12px) translateY(4px); }
+  to { opacity: 1; transform: translateX(0) translateY(0); }
+}
+
+.picker-item > * { position: relative; z-index: 1; }
 
 .picker-item-name {
   flex: 1;
@@ -664,52 +1167,16 @@ const autoResize = (e) => {
 .picker-check {
   color: var(--primary-color);
   flex-shrink: 0;
+  animation: checkBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes checkBounce {
+  0% { opacity: 0; transform: scale(0) rotate(-15deg); }
+  60% { transform: scale(1.2) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
 }
 
 .picker-list::-webkit-scrollbar { width: 4px; }
 .picker-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
-
-/* ─── 文件预览 chips ─── */
-.files-preview {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  max-width: 780px;
-  width: 100%;
-}
-.file-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 12px;
-  color: var(--text-primary);
-  animation: chipIn 0.2s ease;
-}
-@keyframes chipIn {
-  from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1); }
-}
-.file-chip-icon { font-size: 14px; }
-.file-chip-name {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.file-chip-remove {
-  background: none;
-  border: none;
-  color: var(--text-sub);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  transition: color 0.15s;
-}
-.file-chip-remove:hover { color: #e05c4b; }
 
 /* ─── 技能/MCP 胶囊栏（LobeHub 风格） ─── */
 .skill-mcp-wrapper {
@@ -728,14 +1195,15 @@ const autoResize = (e) => {
   border: 1px solid var(--border-color);
   border-radius: 24px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
   max-width: 600px;
   width: 100%;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 .skill-mcp-pill:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 2px 12px rgba(45,134,89,0.08);
+  box-shadow: 0 6px 20px rgba(45,134,89,0.12);
+  transform: translateY(-2px);
 }
 
 .skill-mcp-left {
@@ -804,6 +1272,93 @@ const autoResize = (e) => {
 .mcp-dot.n { background: #000000; }
 .mcp-dot.x { background: #1d9bf0; }
 
+/* ─── 上传下拉菜单 ─── */
+.upload-dropdown-wrapper {
+  position: relative;
+}
+
+.upload-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+  z-index: 100;
+  overflow: hidden;
+  padding: 6px;
+}
+
+.upload-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: left;
+}
+.upload-menu-item:hover {
+  background: var(--hover-bg);
+  transform: translateX(4px) scale(1.01);
+}
+.upload-menu-item:active {
+  background: var(--hover-bg-medium);
+  transform: translateX(2px) scale(0.97);
+  transition-duration: 0.1s;
+}
+
+.upload-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--hover-bg);
+  color: var(--primary-color);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.upload-menu-item:hover .upload-menu-icon {
+  background: var(--hover-bg-medium);
+}
+
+.upload-menu-text {
+  flex: 1;
+}
+
+/* 上传菜单弹出动画 */
+.upload-pop-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.upload-pop-leave-active {
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.upload-pop-enter-from,
+.upload-pop-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.92);
+}
+/* 菜单项交错入场 */
+.upload-menu-item:nth-child(1) { animation: menuItemIn 0.3s 0.02s both; }
+.upload-menu-item:nth-child(2) { animation: menuItemIn 0.3s 0.06s both; }
+.upload-menu-item:nth-child(3) { animation: menuItemIn 0.3s 0.10s both; }
+@keyframes menuItemIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── 手机端 ─── */
 @media (max-width: 768px) {
   .input-section {
@@ -815,6 +1370,47 @@ const autoResize = (e) => {
   }
   .model-picker {
     width: 240px;
+  }
+  .upload-menu {
+    width: 160px;
+    left: 0;
+    transform: translateX(0);
+  }
+  .upload-pop-enter-from,
+  .upload-pop-leave-to {
+    opacity: 0;
+    transform: translateX(0) translateY(8px) scale(0.95);
+  }
+  /* 文件预览：手机端缩略图小一点 */
+  .files-preview-inner {
+    padding: 10px 12px 4px;
+    gap: 8px;
+  }
+  .file-card-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+  }
+  .file-card-name {
+    max-width: 64px;
+    font-size: 10px;
+  }
+  .file-card-doc {
+    min-width: 140px;
+    max-width: 180px;
+    padding: 8px 28px 8px 10px;
+  }
+  .file-card-doc-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .file-card-close {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .file-card-close.doc-close {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
   }
 }
 </style>
