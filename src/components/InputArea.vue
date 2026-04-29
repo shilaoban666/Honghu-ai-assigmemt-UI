@@ -9,10 +9,12 @@
           <template v-if="isImageFile(file)">
             <div class="file-card-thumb">
               <img :src="getFilePreviewUrl(file)" alt="" class="thumb-img" :class="{ 'thumb-dim': file.status === 'uploading' }" />
+              <!-- 上传进度遮罩 -->
               <div v-if="file.status === 'uploading'" class="file-upload-overlay">
                 <svg class="upload-spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22"><circle cx="12" cy="12" r="9" stroke-width="2.5" stroke-opacity="0.25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-width="2.5" stroke-linecap="round"/></svg>
                 <span class="upload-pct">{{ file.progress }}%</span>
               </div>
+              <!-- 错误遮罩 -->
               <div v-else-if="file.status === 'error'" class="file-error-overlay" :title="file.errorMsg">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><circle cx="12" cy="12" r="9" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
               </div>
@@ -35,6 +37,7 @@
                   <template v-else-if="file.status === 'error'">上传失败</template>
                   <template v-else>{{ formatSize(file.size) }}</template>
                 </span>
+                <!-- 进度条 -->
                 <div v-if="file.status === 'uploading'" class="doc-progress-track">
                   <div class="doc-progress-fill" :style="{ width: file.progress + '%' }"></div>
                 </div>
@@ -485,6 +488,43 @@ const triggerImageInput = () => {
   imageInput.value?.click()
 }
 
+// ─── RAG 上传核心：获取预签名 URL → 直传 S3 ───────────────────────────────
+const uploadFileToServer = async (rawFile) => {
+  const userId = chatStore.userId || localStorage.getItem('userId') || 'guest'
+  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : undefined
+  const ext = getFileExtension(rawFile.name)
+  const findEntry = () => attachedFiles.value.find(f => f.file === rawFile)
+
+  try {
+    const { uploadUrl, objectKey, contentType, fileId } = await getUploadUrl(userId, {
+      sessionId,
+      fileType: ext,
+      fileName: rawFile.name,
+      fileSize: rawFile.size
+    })
+
+    await uploadFileToS3(uploadUrl, rawFile, contentType, (percent) => {
+      const entry = findEntry()
+      if (entry) entry.progress = percent
+    })
+
+    const entry = findEntry()
+    if (entry) {
+      entry.status = 'done'
+      entry.progress = 100
+      entry.objectKey = objectKey
+      entry.fileId = fileId
+    }
+  } catch (err) {
+    console.error('[RAG] 文件上传失败:', err)
+    const entry = findEntry()
+    if (entry) {
+      entry.status = 'error'
+      entry.errorMsg = err.message
+    }
+  }
+}
+
 const handleFileSelect = (event) => {
   Array.from(event.target.files || []).forEach(file => {
     attachedFiles.value.push({ name: file.name, file, size: file.size, status: 'uploading', progress: 0 })
@@ -861,24 +901,73 @@ const autoResize = (e) => {
 }
 
 /* ─── 上传状态 ─── */
-.thumb-dim { filter: brightness(0.6); transition: filter 0.3s; }
+.thumb-dim {
+  filter: brightness(0.6);
+  transition: filter 0.3s;
+}
+
 .file-upload-overlay,
 .file-error-overlay {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
-  pointer-events: none; border-radius: inherit;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+  border-radius: inherit;
 }
-.file-upload-overlay { background: rgba(0,0,0,0.38); }
-.file-error-overlay  { background: rgba(220,38,38,0.4); color: #fff; }
-.upload-spin-icon { animation: uploadSpin 0.9s linear infinite; color: #fff; flex-shrink: 0; }
+
+.file-upload-overlay {
+  background: rgba(0,0,0,0.38);
+}
+
+.file-error-overlay {
+  background: rgba(220,38,38,0.4);
+  color: #fff;
+}
+
+.upload-spin-icon {
+  animation: uploadSpin 0.9s linear infinite;
+  color: #fff;
+  flex-shrink: 0;
+}
 @keyframes uploadSpin { to { transform: rotate(360deg); } }
-.upload-pct { font-size: 10px; font-weight: 700; color: #fff; line-height: 1; letter-spacing: 0.02em; }
-.doc-uploading { opacity: 0.85; }
+
+.upload-pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.doc-uploading {
+  opacity: 0.85;
+}
 .doc-error .file-card-doc-name,
-.doc-error .file-card-doc-size { color: #e05c4b; }
-.doc-error .file-card-doc-icon { color: #e05c4b; }
-.doc-progress-track { width: 100%; height: 3px; background: var(--border-color); border-radius: 2px; overflow: hidden; margin-top: 4px; }
-.doc-progress-fill { height: 100%; background: linear-gradient(90deg, var(--theme-gradient-from, #4a9d6f), var(--theme-gradient-to, #6ab187)); border-radius: 2px; transition: width 0.25s ease; }
+.doc-error .file-card-doc-size {
+  color: #e05c4b;
+}
+.doc-error .file-card-doc-icon {
+  color: #e05c4b;
+}
+
+.doc-progress-track {
+  width: 100%;
+  height: 3px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.doc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--theme-gradient-from, #4a9d6f), var(--theme-gradient-to, #6ab187));
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
 
 /* 文件卡片动画 */
 @keyframes fileCardIn {
