@@ -649,7 +649,7 @@ const handleEnterKey = (e) => {
 // 发送
 const sendMessage = () => {
   if (!message.value.trim()) return
-  // 如果还有文件正在上传，等待完成后再发送
+  // 有文件还在上传中，阻止发送
   if (attachedFiles.value.some(f => f.status === 'uploading')) return
   const content = message.value.trim()
   const files = attachedFiles.value.map(f => ({
@@ -939,7 +939,7 @@ const autoResize = (e) => {
 }
 .doc-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--theme-gradient-from), var(--theme-gradient-to));
+  background: linear-gradient(90deg, var(--theme-gradient-from, #4a9d6f), var(--theme-gradient-to, #6ab187));
   border-radius: 2px;
   transition: width 0.25s ease;
 }
