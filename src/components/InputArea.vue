@@ -8,7 +8,16 @@
           <!-- 图片缩略图 -->
           <template v-if="isImageFile(file)">
             <div class="file-card-thumb">
-              <img :src="getFilePreviewUrl(file)" alt="" class="thumb-img" />
+              <img :src="getFilePreviewUrl(file)" alt="" class="thumb-img" :class="{ 'thumb-dim': file.status === 'uploading' }" />
+              <!-- 上传进度遮罩 -->
+              <div v-if="file.status === 'uploading'" class="file-upload-overlay">
+                <svg class="upload-spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22"><circle cx="12" cy="12" r="9" stroke-width="2.5" stroke-opacity="0.25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <span class="upload-pct">{{ file.progress }}%</span>
+              </div>
+              <!-- 错误遮罩 -->
+              <div v-else-if="file.status === 'error'" class="file-error-overlay" :title="file.errorMsg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><circle cx="12" cy="12" r="9" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+              </div>
               <button @click="removeFile(index)" class="file-card-close">
                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
@@ -17,13 +26,21 @@
           </template>
           <!-- 普通文件 -->
           <template v-else>
-            <div class="file-card-doc">
+            <div class="file-card-doc" :class="{ 'doc-uploading': file.status === 'uploading', 'doc-error': file.status === 'error' }">
               <span class="file-card-doc-icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </span>
               <div class="file-card-doc-info">
                 <span class="file-card-doc-name">{{ truncateName(file.name) }}</span>
-                <span class="file-card-doc-size">{{ formatSize(file.size) }}</span>
+                <span class="file-card-doc-size">
+                  <template v-if="file.status === 'uploading'">上传中 {{ file.progress }}%</template>
+                  <template v-else-if="file.status === 'error'">上传失败</template>
+                  <template v-else>{{ formatSize(file.size) }}</template>
+                </span>
+                <!-- 进度条 -->
+                <div v-if="file.status === 'uploading'" class="doc-progress-track">
+                  <div class="doc-progress-fill" :style="{ width: file.progress + '%' }"></div>
+                </div>
               </div>
               <button @click="removeFile(index)" class="file-card-close doc-close">
                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 6L6 18M6 6l12 12"/></svg>
@@ -262,6 +279,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useChat } from '@/stores/chatStore'
 import { persistentStreamChat } from '@/api/chat'
+import { getUploadUrl, uploadFileToS3, getFileExtension } from '@/api/rag'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
 import ScreenshotEditor from '@/components/ScreenshotEditor.vue'
 import { t } from '@/utils/i18n'
@@ -470,16 +488,55 @@ const triggerImageInput = () => {
   imageInput.value?.click()
 }
 
+// ─── RAG 上传核心：获取预签名 URL → 直传 S3 ───────────────────────────────
+const uploadFileToServer = async (rawFile) => {
+  const userId = chatStore.userId || localStorage.getItem('userId') || 'guest'
+  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : undefined
+  const ext = getFileExtension(rawFile.name)
+  const findEntry = () => attachedFiles.value.find(f => f.file === rawFile)
+
+  try {
+    const { uploadUrl, objectKey, contentType, fileId } = await getUploadUrl(userId, {
+      sessionId,
+      fileType: ext,
+      fileName: rawFile.name,
+      fileSize: rawFile.size
+    })
+
+    await uploadFileToS3(uploadUrl, rawFile, contentType, (percent) => {
+      const entry = findEntry()
+      if (entry) entry.progress = percent
+    })
+
+    const entry = findEntry()
+    if (entry) {
+      entry.status = 'done'
+      entry.progress = 100
+      entry.objectKey = objectKey
+      entry.fileId = fileId
+    }
+  } catch (err) {
+    console.error('[RAG] 文件上传失败:', err)
+    const entry = findEntry()
+    if (entry) {
+      entry.status = 'error'
+      entry.errorMsg = err.message
+    }
+  }
+}
+
 const handleFileSelect = (event) => {
   Array.from(event.target.files || []).forEach(file => {
-    attachedFiles.value.push({ name: file.name, file, size: file.size })
+    attachedFiles.value.push({ name: file.name, file, size: file.size, status: 'uploading', progress: 0 })
+    uploadFileToServer(file)
   })
   event.target.value = ''
 }
 
 const handleImageSelect = (event) => {
   Array.from(event.target.files || []).forEach(file => {
-    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image', status: 'uploading', progress: 0 })
+    uploadFileToServer(file)
   })
   event.target.value = ''
 }
@@ -487,7 +544,8 @@ const handleImageSelect = (event) => {
 const handleCameraCapture = (event) => {
   const file = event.target.files?.[0]
   if (file) {
-    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+    attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image', status: 'uploading', progress: 0 })
+    uploadFileToServer(file)
   }
   event.target.value = ''
 }
@@ -537,7 +595,8 @@ const triggerScreenCapture = async () => {
 
 // 截屏编辑器确认
 const handleScreenshotConfirm = (file) => {
-  attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image' })
+  attachedFiles.value.push({ name: file.name, file, size: file.size, type: 'image', status: 'uploading', progress: 0 })
+  uploadFileToServer(file)
   showScreenshotEditor.value = false
   screenshotImage.value = null
 }
@@ -590,8 +649,16 @@ const handleEnterKey = (e) => {
 // 发送
 const sendMessage = () => {
   if (!message.value.trim()) return
+  // 如果还有文件正在上传，等待完成后再发送
+  if (attachedFiles.value.some(f => f.status === 'uploading')) return
   const content = message.value.trim()
-  const files = attachedFiles.value.map(f => f.file)
+  const files = attachedFiles.value.map(f => ({
+    file: f.file,
+    objectKey: f.objectKey,
+    fileId: f.fileId,
+    name: f.name,
+    size: f.size
+  }))
 
   emit('send-message', { content, files, model: selectedModel.value, isUserMessage: true })
   emit('send-message', { content: '', isStreaming: true, isUserMessage: false, timestamp: Date.now(), isInitialMessage: true })
@@ -806,6 +873,75 @@ const autoResize = (e) => {
   background: rgba(224,92,75,0.15);
   color: #e05c4b;
   transform: translateY(-50%) scale(1.15) !important;
+}
+
+/* ─── 上传状态 ─── */
+.thumb-dim {
+  filter: brightness(0.6);
+  transition: filter 0.3s;
+}
+
+.file-upload-overlay,
+.file-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.file-upload-overlay {
+  background: rgba(0,0,0,0.38);
+}
+
+.file-error-overlay {
+  background: rgba(220,38,38,0.4);
+  color: #fff;
+}
+
+.upload-spin-icon {
+  animation: uploadSpin 0.9s linear infinite;
+  color: #fff;
+  flex-shrink: 0;
+}
+@keyframes uploadSpin { to { transform: rotate(360deg); } }
+
+.upload-pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.doc-uploading {
+  opacity: 0.85;
+}
+.doc-error .file-card-doc-name,
+.doc-error .file-card-doc-size {
+  color: #e05c4b;
+}
+.doc-error .file-card-doc-icon {
+  color: #e05c4b;
+}
+
+.doc-progress-track {
+  width: 100%;
+  height: 3px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.doc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--theme-gradient-from), var(--theme-gradient-to));
+  border-radius: 2px;
+  transition: width 0.25s ease;
 }
 
 /* 文件卡片动画 */
