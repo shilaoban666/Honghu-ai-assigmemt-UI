@@ -912,10 +912,27 @@ const autoResize = (e) => {
 .upload-pct { font-size: 10px; font-weight: 700; color: #fff; line-height: 1; letter-spacing: 0.02em; }
 .doc-uploading { opacity: 0.85; }
 .doc-error .file-card-doc-name,
-.doc-error .file-card-doc-size { color: #e05c4b; }
-.doc-error .file-card-doc-icon { color: #e05c4b; }
-.doc-progress-track { width: 100%; height: 3px; background: var(--border-color); border-radius: 2px; overflow: hidden; margin-top: 4px; }
-.doc-progress-fill { height: 100%; background: linear-gradient(90deg, var(--theme-gradient-from, #4a9d6f), var(--theme-gradient-to, #6ab187)); border-radius: 2px; transition: width 0.25s ease; }
+.doc-error .file-card-doc-size {
+  color: #e05c4b;
+}
+.doc-error .file-card-doc-icon {
+  color: #e05c4b;
+}
+
+.doc-progress-track {
+  width: 100%;
+  height: 3px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.doc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--theme-gradient-from, #4a9d6f), var(--theme-gradient-to, #6ab187));
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
 
 /* 文件卡片动画 */
 @keyframes fileCardIn {

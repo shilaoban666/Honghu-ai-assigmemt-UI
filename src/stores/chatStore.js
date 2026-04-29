@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { callAIAPI } from '@/api/chat'
+import { getUserSessions, getSessionChatHistory } from '@/api/chat'
 
 export const useChat = defineStore('chat', () => {
   const chats = ref([])
@@ -8,10 +8,135 @@ export const useChat = defineStore('chat', () => {
   const loading = ref(false)
   const memory = ref({}) // 记忆存储
 
-  const createNewChat = () => {
+  // 用户认证相关状态
+  const isLoggedIn = ref(false)
+  const currentUser = ref(null)
+  const userId = ref(null)
+  const username = ref('')
+  const userEmail = ref('')
+  const userPhone = ref('')
+  const userAvatar = ref('')
+  const userRole = ref('GUEST')
+  const identity = ref('GUEST')
+  const identityLabel = ref('')
+  const availableModels = ref([])
+
+  // 从localStorage恢复登录状态
+  const initFromLocalStorage = () => {
+    const savedIsLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    const savedUserInfo = localStorage.getItem('userInfo')
+    
+    if (savedIsLoggedIn && savedUserInfo) {
+      try {
+        const userInfo = JSON.parse(savedUserInfo)
+        login(userInfo)
+      } catch (error) {
+        console.error('恢复用户信息失败:', error)
+        logout()
+      }
+    }
+  }
+
+  // 登录
+  const login = (userInfo) => {
+    isLoggedIn.value = true
+    currentUser.value = userInfo
+    userId.value = userInfo.userId
+    username.value = userInfo.username
+    userEmail.value = userInfo.email || ''
+    userPhone.value = userInfo.phone || ''
+    userAvatar.value = userInfo.avatar || ''
+    userRole.value = userInfo.userRole || 'GUEST'
+    identity.value = userInfo.identity || userInfo.userRole || 'GUEST'
+    identityLabel.value = userInfo.identityLabel || ''
+    availableModels.value = userInfo.availableModels || []
+
+    // 保存到localStorage
+    localStorage.setItem('isLoggedIn', 'true')
+    localStorage.setItem('userId', userInfo.userId)
+    localStorage.setItem('username', userInfo.username)
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+  }
+
+  // 登出
+  const logout = () => {
+    isLoggedIn.value = false
+    currentUser.value = null
+    userId.value = null
+    username.value = ''
+    userEmail.value = ''
+    userPhone.value = ''
+    userAvatar.value = ''
+    userRole.value = 'GUEST'
+    identity.value = 'GUEST'
+    identityLabel.value = ''
+    availableModels.value = []
+
+    // 清除localStorage
+    localStorage.removeItem('isLoggedIn')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('username')
+    localStorage.removeItem('userInfo')
+    localStorage.removeItem('rememberMe')
+
+    // 清除所有对话
+    chats.value = []
+    currentChatId.value = null
+  }
+
+  // 更新用户信息
+  const updateUserInfo = (userInfo) => {
+    if (isLoggedIn.value) {
+      currentUser.value = { ...currentUser.value, ...userInfo }
+      if (userInfo.email) userEmail.value = userInfo.email
+      if (userInfo.phone) userPhone.value = userInfo.phone
+      if (userInfo.avatar) userAvatar.value = userInfo.avatar
+      localStorage.setItem('userInfo', JSON.stringify(currentUser.value))
+    }
+  }
+
+  // 加载指定会话的聊天历史
+  const loadSessionHistory = async (sessionId) => {
+    try {
+      const history = await getSessionChatHistory(sessionId)
+      const chat = chats.value.find(c => c.id === sessionId)
+      if (chat) {
+        const sorted = [...history].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        chat.messages = sorted.map(m => ({
+          role: m.chatRole,
+          content: m.content,
+          timestamp: new Date(m.createdAt).getTime()
+        }))
+      }
+    } catch (err) {
+      console.error('加载对话历史失败:', err)
+    }
+  }
+
+  // 加载用户所有会话并初始化最新会话的消息
+  const loadUserSessions = async (uid) => {
+    try {
+      const sessions = await getUserSessions(uid)
+      const sorted = [...sessions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      chats.value = sorted.map(s => ({
+        id: s.sessionId,
+        title: s.sessionName || s.title || '未命名对话',
+        messages: [],
+        createdAt: s.createdAt
+      }))
+      if (chats.value.length > 0) {
+        currentChatId.value = chats.value[0].id
+        await loadSessionHistory(chats.value[0].id)
+      }
+    } catch (err) {
+      console.error('加载会话列表失败:', err)
+    }
+  }
+
+  const createNewChat = (customTitle = null) => {
     const newChat = {
       id: Date.now(),
-      title: '新对话',
+      title: customTitle || '新对话',
       messages: [],
       createdAt: new Date(),
       memory: [] // 对话记忆
@@ -87,6 +212,16 @@ export const useChat = defineStore('chat', () => {
     }
   }
 
+  const togglePin = (chatId) => {
+    const chat = chats.value.find(c => c.id === chatId)
+    if (!chat) return
+    chat.pinned = !chat.pinned
+    chats.value = [
+      ...chats.value.filter(c => c.pinned),
+      ...chats.value.filter(c => !c.pinned)
+    ]
+  }
+
   const getHistory = (chatId) => {
     const chat = chats.value.find(c => c.id === chatId)
     return chat ? chat.messages : []
@@ -98,6 +233,7 @@ export const useChat = defineStore('chat', () => {
   }
 
   return {
+    // 聊天相关
     chats,
     currentChatId,
     loading,
@@ -107,7 +243,26 @@ export const useChat = defineStore('chat', () => {
     addMessage,
     sendMessage,
     deleteChat,
+    togglePin,
     getHistory,
-    getMemory
+    getMemory,
+    // 用户认证相关
+    isLoggedIn,
+    currentUser,
+    userId,
+    username,
+    userEmail,
+    userPhone,
+    userAvatar,
+    userRole,
+    identity,
+    identityLabel,
+    availableModels,
+    login,
+    logout,
+    updateUserInfo,
+    initFromLocalStorage,
+    loadUserSessions,
+    loadSessionHistory
   }
 })
