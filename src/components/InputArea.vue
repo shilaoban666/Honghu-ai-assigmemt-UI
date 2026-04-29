@@ -601,31 +601,6 @@ const handleScreenshotConfirm = (file) => {
   screenshotImage.value = null
 }
 
-const uploadFileToServer = async (rawFile) => {
-  const userId = chatStore.userId || localStorage.getItem('userId') || 'guest'
-  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : undefined
-  const ext = getFileExtension(rawFile.name)
-  const findEntry = () => attachedFiles.value.find(f => f.file === rawFile)
-  try {
-    const { uploadUrl, objectKey, contentType, fileId } = await getUploadUrl(userId, {
-      sessionId,
-      fileType: ext,
-      fileName: rawFile.name,
-      fileSize: rawFile.size
-    })
-    await uploadFileToS3(uploadUrl, rawFile, contentType, (percent) => {
-      const entry = findEntry()
-      if (entry) entry.progress = percent
-    })
-    const entry = findEntry()
-    if (entry) { entry.status = 'done'; entry.progress = 100; entry.objectKey = objectKey; entry.fileId = fileId }
-  } catch (err) {
-    console.error('[RAG] 文件上传失败:', err)
-    const entry = findEntry()
-    if (entry) { entry.status = 'error'; entry.errorMsg = err.message }
-  }
-}
-
 const removeFile = (index) => attachedFiles.value.splice(index, 1)
 
 // 文件预览辅助
