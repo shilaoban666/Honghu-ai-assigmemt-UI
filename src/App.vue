@@ -272,7 +272,8 @@ const sendMessage = async (messageData) => {
       chatStore.addMessage(chatId, {
         role: 'user',
         content: content,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        files: messageData.files || []
       })
     } else if (messageData.isStreaming === true) {
       // 处理流式数据（来自 ChatResponse）
