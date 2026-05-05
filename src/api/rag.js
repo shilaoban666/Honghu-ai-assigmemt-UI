@@ -23,7 +23,7 @@ const BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
 export const getUploadUrl = async (userId, { sessionId, fileType, fileName, fileSize }) => {
   const response = await fetch(`${BASE}/rag/${userId}/upload-url`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     credentials: 'include',
     body: JSON.stringify({ sessionId, fileType, fileName, fileSize })
   })
@@ -78,6 +78,171 @@ export const uploadFileToS3 = (uploadUrl, file, contentType, onProgress) => {
 
     xhr.send(file)
   })
+}
+
+/**
+ * 第三步：告知后端文件已上传，创建 RECEIVED 状态记录
+ *
+ * @param {string} userId
+ * @param {object} params
+ * @param {string} params.objectKey  - S3 objectKey（预签名接口返回）
+ * @param {string} [params.fileName] - 原始文件名
+ * @returns {Promise<RagFileStatusResponse>}
+ */
+export const registerUploadedFile = async (userId, { objectKey, fileName }) => {
+  const response = await fetch(`${BASE}/rag/files`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Id': userId
+    },
+    credentials: 'include',
+    body: JSON.stringify({ objectKey, fileName })
+  })
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`文件登记失败 (${response.status})${errText ? ': ' + errText : ''}`)
+  }
+  return response.json()
+}
+
+/**
+ * 查询会话下全部文件状态列表
+ *
+ * @param {string} sessionId
+ * @param {string} userId
+ * @returns {Promise<RagFileStatusResponse[]>}
+ */
+export const getSessionFiles = async (sessionId, userId) => {
+  const response = await fetch(`${BASE}/rag/sessions/${sessionId}/files`, {
+    headers: { 'X-User-Id': userId },
+    credentials: 'include'
+  })
+  if (!response.ok) throw new Error(`查询会话文件失败 (${response.status})`)
+  return response.json()
+}
+
+/**
+ * 查询单文件 RAG 状态（单次轮询）
+ *
+ * @param {string} fileId
+ * @param {string} userId
+ * @returns {Promise<RagFileStatusResponse>}
+ */
+export const getFileStatus = async (fileId, userId) => {
+  const response = await fetch(`${BASE}/rag/files/${fileId}/status`, {
+    headers: { 'X-User-Id': userId },
+    credentials: 'include'
+  })
+  if (!response.ok) throw new Error(`查询文件状态失败 (${response.status})`)
+  return response.json()
+}
+
+/**
+ * 第七步：通过 fetch 实现 SSE 订阅（支持自定义 X-User-Id 请求头）
+ *
+ * @param {string}   fileId
+ * @param {string}   userId
+ * @param {object}   options
+ * @param {Function} options.onStatus           - 收到 rag-status 事件时回调
+ * @param {Function} [options.onTimeout]        - 收到 timeout 事件时回调
+ * @param {Function} [options.onError]          - 连接/解析出错时回调
+ * @param {number}   [options.timeoutSeconds]   - 最长等待秒数，默认 120
+ * @param {number}   [options.pollIntervalMillis] - 后端轮询间隔，默认 1500
+ * @returns {Function} close - 调用后立即断开 SSE 连接
+ */
+export const subscribeFileStatus = (fileId, userId, {
+  onStatus,
+  onTimeout,
+  onError,
+  timeoutSeconds = 120,
+  pollIntervalMillis = 1500
+}) => {
+  const url = `${BASE}/rag/files/${fileId}/status/stream?timeoutSeconds=${timeoutSeconds}&pollIntervalMillis=${pollIntervalMillis}`
+  const controller = new AbortController()
+  let closed = false
+
+  const close = () => {
+    if (!closed) {
+      closed = true
+      controller.abort()
+    }
+  }
+
+  fetch(url, {
+    headers: {
+      'Accept': 'text/event-stream',
+      'X-User-Id': userId,
+      'Cache-Control': 'no-cache'
+    },
+    credentials: 'include',
+    signal: controller.signal
+  }).then(async (response) => {
+    if (!response.ok) {
+      onError?.(new Error(`SSE 连接失败 (${response.status})`))
+      return
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let currentEvent = ''
+
+    const processLine = (line) => {
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim()
+      } else if (line.startsWith('data:')) {
+        const dataStr = line.slice(5).trim()
+        if (!dataStr) return
+        try {
+          const data = JSON.parse(dataStr)
+          if (currentEvent === 'rag-status') {
+            onStatus?.(data)
+            if (data.completed) close()
+          } else if (currentEvent === 'timeout') {
+            onTimeout?.(data)
+            close()
+          }
+        } catch { /* 非 JSON 行忽略 */ }
+        currentEvent = ''
+      }
+    }
+
+    const pump = async () => {
+      while (!closed) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop()
+        lines.forEach(processLine)
+      }
+    }
+
+    pump().catch((err) => {
+      if (!closed) onError?.(err)
+    })
+  }).catch((err) => {
+    if (!closed && err.name !== 'AbortError') onError?.(err)
+  })
+
+  return close
+}
+
+/**
+ * 获取文件预签名下载 URL（用于跨会话预览，15 分钟有效）
+ *
+ * @param {string} fileId
+ * @param {string} userId
+ * @returns {Promise<string>} downloadUrl
+ */
+export const getFileDownloadUrl = async (fileId, userId) => {
+  const response = await fetch(`${BASE}/rag/files/${fileId}/download-url`, {
+    headers: { 'X-User-Id': userId },
+    credentials: 'include'
+  })
+  if (!response.ok) throw new Error(`获取下载地址失败 (${response.status})`)
+  const json = await response.json()
+  return json.downloadUrl
 }
 
 /**

@@ -105,7 +105,15 @@ export const useChat = defineStore('chat', () => {
         chat.messages = sorted.map(m => ({
           role: m.chatRole,
           content: m.content,
-          timestamp: new Date(m.createdAt).getTime()
+          timestamp: new Date(m.createdAt).getTime(),
+          files: (m.attachments || []).map(a => ({
+            fileId: a.fileId,
+            name: a.fileName,
+            size: a.fileSize,
+            isImage: /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(a.fileName || ''),
+            downloadUrl: a.downloadUrl || null,
+            documentStatus: a.documentStatus
+          }))
         }))
       }
     } catch (err) {
@@ -135,7 +143,7 @@ export const useChat = defineStore('chat', () => {
 
   const createNewChat = (customTitle = null) => {
     const newChat = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       title: customTitle || '新对话',
       messages: [],
       createdAt: new Date(),
