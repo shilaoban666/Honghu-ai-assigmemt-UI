@@ -9,7 +9,12 @@ const apiClient = axios.create({
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 })
-
+// 自动附加 X-User-Id 请求头
+apiClient.interceptors.request.use((config) => {
+  const userId = localStorage.getItem('userId')
+  if (userId) config.headers['X-User-Id'] = userId
+  return config
+})
 // ─── SSE 公共流式处理器 ───────────────────────────────────────────────────────
 async function ssePost(url, body, onData, onError, onComplete) {
   const userId = localStorage.getItem('userId') || ''
@@ -76,7 +81,8 @@ export const persistentStreamChat = (chatRequest, onData, onError, onComplete) =
     stream: true,
     systemMessage: chatRequest.systemMessage,
     temperature: chatRequest.temperature ?? 0.7,
-    maxTokens: chatRequest.maxTokens ?? 4096
+    maxTokens: chatRequest.maxTokens ?? 4096,
+    attachmentFileIds: chatRequest.attachmentFileIds?.length ? chatRequest.attachmentFileIds : undefined
   }
   return ssePost(`${BASE}/chat/structured/stream/persistent`, body, onData, onError, onComplete)
 }
