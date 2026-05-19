@@ -31,6 +31,9 @@ onMounted(async () => {
   document.documentElement.setAttribute('data-bubble-style', localStorage.getItem('bubbleStyle') || 'bubble')
 
   if (chatStore.isLoggedIn && chatStore.userId) {
+    await chatStore.refreshCurrentUser(chatStore.userId).catch(error => {
+      console.warn('用户资料刷新失败:', error)
+    })
     await chatStore.loadUserSessions(chatStore.userId)
     await chatStore.loadUserQuota(chatStore.userId).catch(error => {
       console.warn('用户额度快照加载失败:', error)
