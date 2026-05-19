@@ -197,6 +197,7 @@ const props = defineProps({
 watch(
   () => props.messages,
   () => {
+    if (localStorage.getItem('autoScroll') === 'false') return
     nextTick(() => {
       if (chatAreaRef.value) {
         chatAreaRef.value.scrollTop = chatAreaRef.value.scrollHeight
@@ -234,6 +235,11 @@ const previewResolvedUrl = ref(null) // 当前预览用的最终 URL
 
 const isPdfFile  = (name) => /\.pdf$/i.test(name)
 const isTextFile = (name) => /\.(txt|md|csv|json|js|ts|jsx|tsx|py|html|htm|css|xml|yaml|yml|log|sh|bash|sql|toml|ini)$/i.test(name)
+
+const highlightCode = (code) => code
+  .replace(/\b(const|let|var|function|return|type|interface|class|extends|import|from|export|if|else|await|async|new|satisfies|typeof)\b/g, '<span class="token-keyword">$1</span>')
+  .replace(/(&quot;.*?&quot;|&#039;.*?&#039;|`.*?`)/g, '<span class="token-string">$1</span>')
+  .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="token-number">$1</span>')
 
 // 获取可用的预览 URL：优先 blob URL，其次历史接口返回的 downloadUrl，最后再主动请求预签名地址
 const resolvePreviewUrl = async (f) => {
@@ -286,7 +292,7 @@ const formatMessage = (content) => {
     .replace(/'/g, '&#039;')
   
   // 第二步：处理代码块（必须在其他处理之前）
-  html = html.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>')
+  html = html.replace(/```([\s\S]*?)```/g, (_, code) => `<pre class="code-block"><code>${highlightCode(code)}</code></pre>`)
   
   // 第三步：处理标题（必须在 # 被其他规则替换前处理）
   html = html.replace(/^### (.+?)$/gm, '<h3 class="md-h3">$1</h3>')
@@ -310,7 +316,7 @@ const formatMessage = (content) => {
   html = lines.join('\n')
   
   // 第五步：处理行内代码 `code`
-  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+  html = html.replace(/`([^`]+)`/g, (_, code) => `<code class="inline-code">${highlightCode(code)}</code>`)
   
   // 第六步：处理强调 **text** __text__
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="bold-text">$1</strong>')
@@ -454,9 +460,15 @@ const formatMessage = (content) => {
   max-width: 72%;
   background: linear-gradient(135deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%);
   color: #fff;
-  border-radius: 18px 18px 4px 18px;
+  border-radius: 20px 20px 8px 20px;
   padding: 11px 16px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 18px rgba(45, 134, 89, 0.14);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.user-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(45, 134, 89, 0.18);
 }
 
 .user-text {
@@ -577,10 +589,11 @@ const formatMessage = (content) => {
 
 /* 代码*/
 .message-text-formatted .code-block {
-  background: var(--bg-secondary);
+  background: var(--code-bg, var(--bg-secondary));
   border: 1px solid var(--border-color);
   border-left: 3px solid var(--primary-color);
   border-radius: 8px;
+  color: var(--code-fg, var(--text-primary));
   padding: 14px 16px;
   margin: 14px 0;
   overflow-x: auto;
@@ -594,17 +607,33 @@ const formatMessage = (content) => {
   background: transparent;
   padding: 0;
   font-size: 13px;
+  color: var(--code-fg, var(--text-primary));
 }
 
 /* 行内代码 */
 .message-text-formatted .inline-code {
-  background: var(--bg-secondary);
+  background: var(--code-bg, var(--bg-secondary));
   color: var(--primary-color);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Fira Code', 'JetBrains Mono', 'Monaco', monospace;
   font-size: 13px;
   border: 1px solid var(--border-color);
+}
+
+.message-text-formatted .code-block .token-keyword,
+.message-text-formatted .inline-code .token-keyword {
+  color: var(--code-keyword);
+}
+
+.message-text-formatted .code-block .token-string,
+.message-text-formatted .inline-code .token-string {
+  color: var(--code-string);
+}
+
+.message-text-formatted .code-block .token-number,
+.message-text-formatted .inline-code .token-number {
+  color: var(--code-number);
 }
 
 /* 粗体 / 斜体 */
