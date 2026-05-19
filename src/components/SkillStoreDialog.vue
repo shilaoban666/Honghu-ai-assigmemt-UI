@@ -125,23 +125,24 @@ const toggleSkill = (skill) => {
 .skill-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(4px);
+  background: rgba(17, 24, 39, 0.42);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 32px;
   z-index: 9999;
 }
 
 .skill-modal {
   background: var(--bg-primary, #fff);
-  border-radius: 20px;
-  width: 680px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 80px);
+  border: 1px solid var(--border-color, rgba(74, 157, 111, 0.15));
+  border-radius: 18px;
+  width: min(960px, calc(100vw - 64px));
+  max-height: min(760px, calc(100vh - 64px));
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.2);
   animation: skillIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
   overflow: hidden;
 }
@@ -165,11 +166,12 @@ const toggleSkill = (skill) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 28px 0;
+  padding: 26px 36px 0;
+  flex-shrink: 0;
 }
 
 .skill-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary, #1a1a1a);
   margin: 0;
@@ -180,9 +182,12 @@ const toggleSkill = (skill) => {
   border: none;
   cursor: pointer;
   color: var(--text-sub, #999);
-  padding: 5px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s;
 }
 .skill-close:hover {
@@ -193,22 +198,26 @@ const toggleSkill = (skill) => {
 /* Tab */
 .skill-tabs {
   display: flex;
-  gap: 0;
-  padding: 16px 28px 0;
+  gap: 14px;
+  padding: 18px 36px 0;
   border-bottom: 1.5px solid var(--border-color, #eee);
+  flex-shrink: 0;
+  overflow-x: auto;
 }
 
 .tab-btn {
   background: none;
   border: none;
   border-bottom: 2.5px solid transparent;
-  padding: 8px 22px 12px;
-  font-size: 14px;
+  padding: 8px 0 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--text-sub, #999);
   cursor: pointer;
   transition: all 0.2s;
   border-radius: 0;
+  white-space: nowrap;
+  min-width: 72px;
 }
 .tab-btn.active {
   color: var(--primary-color, #2d8659);
@@ -223,16 +232,19 @@ const toggleSkill = (skill) => {
 .skill-search-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 14px 28px 0;
-  padding: 10px 14px;
+  gap: 10px;
+  margin: 18px 36px 0;
+  padding: 12px 16px;
   background: var(--bg-secondary, #f7f8fa);
   border: 1.5px solid var(--border-color, #e4e4e4);
-  border-radius: 10px;
-  transition: border-color 0.2s;
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  flex-shrink: 0;
 }
 .skill-search-bar:focus-within {
   border-color: var(--primary-color, #2d8659);
+  box-shadow: 0 0 0 3px rgba(45, 134, 89, 0.08);
+  background: var(--bg-primary, #fff);
 }
 
 .search-icon {
@@ -242,9 +254,10 @@ const toggleSkill = (skill) => {
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary, #333);
   outline: none;
 }
@@ -255,37 +268,44 @@ const toggleSkill = (skill) => {
 /* 技能列表 grid */
 .skill-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 16px 28px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+  padding: 20px 36px 30px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
+  min-height: 0;
+  align-content: start;
 }
 
 .skill-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 14px;
+  min-width: 0;
+  min-height: 80px;
+  padding: 16px;
+  border-radius: 12px;
   border: 1.5px solid var(--border-color, #eee);
   background: var(--bg-primary, #fff);
-  transition: all 0.18s;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s, background 0.18s;
   cursor: default;
 }
 .skill-card:hover {
   border-color: var(--primary-color, #2d8659);
   box-shadow: 0 4px 16px rgba(45,134,89,0.08);
+  transform: translateY(-1px);
 }
 
 .skill-card-icon {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 23px;
+  line-height: 1;
   flex-shrink: 0;
 }
 
@@ -295,12 +315,15 @@ const toggleSkill = (skill) => {
 }
 
 .skill-card-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary, #222);
   display: flex;
   align-items: center;
   gap: 6px;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .skill-badge {
@@ -309,6 +332,7 @@ const toggleSkill = (skill) => {
   border-radius: 4px;
   padding: 1px 5px;
   line-height: 1.4;
+  flex-shrink: 0;
 }
 .skill-badge.mcp {
   background: #e0f2fe;
@@ -320,17 +344,20 @@ const toggleSkill = (skill) => {
 }
 
 .skill-card-desc {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--text-sub, #999);
-  margin: 3px 0 0;
-  white-space: nowrap;
+  margin: 5px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .skill-add-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
   border: 1.5px solid var(--border-color, #ddd);
   background: var(--bg-primary, #fff);
@@ -355,17 +382,42 @@ const toggleSkill = (skill) => {
 
 /* 滚动条 */
 .skill-grid::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 .skill-grid::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.12);
   border-radius: 3px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
+  .skill-overlay {
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  .skill-modal {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+  }
+
+  .skill-header {
+    padding: 20px 20px 0;
+  }
+
+  .skill-tabs {
+    padding: 14px 20px 0;
+  }
+
+  .skill-search-bar {
+    margin: 14px 20px 0;
+  }
+
   .skill-grid {
     grid-template-columns: 1fr;
+    padding: 16px 20px 22px;
   }
+
   .skill-modal {
     border-radius: 14px;
   }

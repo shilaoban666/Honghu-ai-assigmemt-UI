@@ -85,7 +85,7 @@
               </div>
               <div class="up-user-info">
                 <span class="up-username">{{ chatStore.isLoggedIn ? chatStore.username : t('notLoggedInMsg') }}</span>
-                <span v-if="chatStore.isLoggedIn" class="up-badge">{{ t('freePlan') }}</span>
+                <span v-if="chatStore.isLoggedIn" class="up-badge">{{ identityDisplay }}</span>
               </div>
               <button v-if="chatStore.isLoggedIn" class="up-settings-icon" @click="openSettings" :title="t('settings')">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -125,11 +125,15 @@
             <!-- Token 使用量 -->
             <div class="up-quota">
               <div class="up-quota-header">
-                <span class="up-quota-label">{{ t('freeQuota') }}</span>
+                <span class="up-quota-label">月度标准 Token</span>
                 <span class="up-quota-value">{{ tokenUsedDisplay }} / {{ tokenTotalDisplay }}</span>
               </div>
               <div class="up-progress-track">
                 <div class="up-progress-fill" :style="{ width: tokenPercent + '%' }"></div>
+              </div>
+              <div class="up-quota-meta">
+                <span>已用 {{ tokenUsedDisplay }}</span>
+                <span>剩余 {{ tokenRemainingDisplay }}</span>
               </div>
             </div>
 
@@ -201,24 +205,42 @@ const topicCount = computed(() => chatStore.chats.length)
 const totalMessages = computed(() => {
   return chatStore.chats.reduce((sum, c) => sum + (c.messages?.length || 0), 0)
 })
+const identityDisplay = computed(() => chatStore.identityLabel || chatStore.userRole || '用户')
 
 // Token 使用量（模拟数据，后期可对接 API）
-const tokenUsed = computed(() => {
-  const msgs = totalMessages.value
-  return Math.min(msgs * 800, 500000)
+// Token 额度来自后端 QuotaSnapshot，主界面展示月度标准 token。
+const activeQuota = computed(() => chatStore.quotaSnapshot?.monthly || null)
+const fallbackTokenLimit = 500000
+
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const formatToken = (value) => {
+  const n = toNumber(value)
+  if (n >= 1000000000) return `${(n / 1000000000).toFixed(2)}B`
+  if (n >= 1000000) return `${(n / 1000000).toFixed(2)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return `${Math.round(n)}`
+}
+
+const tokenUsed = computed(() => toNumber(activeQuota.value?.tokenUsed, 0))
+const tokenTotal = computed(() => {
+  if (activeQuota.value?.unlimited) return null
+  return toNumber(activeQuota.value?.tokenLimit, fallbackTokenLimit)
 })
-const tokenTotal = 500000
-const tokenPercent = computed(() => Math.min((tokenUsed.value / tokenTotal) * 100, 100))
-const tokenUsedDisplay = computed(() => {
-  if (tokenUsed.value >= 1000000) return (tokenUsed.value / 1000000).toFixed(1) + 'M'
-  if (tokenUsed.value >= 1000) return (tokenUsed.value / 1000).toFixed(1) + 'K'
-  return tokenUsed.value
+const tokenRemaining = computed(() => {
+  if (activeQuota.value?.unlimited || tokenTotal.value == null) return null
+  return Math.max(0, tokenTotal.value - tokenUsed.value)
 })
-const tokenTotalDisplay = computed(() => {
-  if (tokenTotal >= 1000000) return (tokenTotal / 1000000).toFixed(1) + 'M'
-  if (tokenTotal >= 1000) return (tokenTotal / 1000).toFixed(1) + 'K'
-  return tokenTotal
+const tokenPercent = computed(() => {
+  if (!tokenTotal.value) return 0
+  return Math.min(100, Math.max(0, (tokenUsed.value / tokenTotal.value) * 100))
 })
+const tokenUsedDisplay = computed(() => formatToken(tokenUsed.value))
+const tokenTotalDisplay = computed(() => activeQuota.value?.unlimited ? '不限' : formatToken(tokenTotal.value))
+const tokenRemainingDisplay = computed(() => activeQuota.value?.unlimited ? '不限' : formatToken(tokenRemaining.value))
 
 const exportChat = () => {
   alert(t('exportDeveloping'))
@@ -486,6 +508,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   height: 100%; border-radius: 3px;
   background: linear-gradient(90deg, var(--primary-color), var(--primary-light, var(--primary-color)));
   transition: width 0.4s ease;
+}
+.up-quota-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--text-sub);
 }
 
 /* ── 分隔线 ───────────────────────────────────── */
