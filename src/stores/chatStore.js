@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserSessions, getSessionChatHistory } from '@/api/chat'
-import { getUserQuota } from '@/api/auth'
+import { getUserInfo, getUserQuota } from '@/api/auth'
 import { extractHistoryList, normalizeHistoryPayload } from '@/utils/chatHistory'
 
 export const useChat = defineStore('chat', () => {
@@ -46,7 +46,7 @@ export const useChat = defineStore('chat', () => {
     username.value = userInfo.username || userInfo.nickname || ''
     userEmail.value = userInfo.email || ''
     userPhone.value = userInfo.phone || ''
-    userAvatar.value = userInfo.avatar || localStorage.getItem('userAvatar') || ''
+    userAvatar.value = userInfo.avatar || userInfo.avatarUrl || localStorage.getItem('userAvatar') || ''
     userRole.value = userInfo.userRole || 'GUEST'
     identity.value = userInfo.identity || userInfo.userRole || 'GUEST'
     identityLabel.value = userInfo.identityLabel || ''
@@ -84,6 +84,7 @@ export const useChat = defineStore('chat', () => {
     localStorage.removeItem('username')
     localStorage.removeItem('userInfo')
     localStorage.removeItem('rememberMe')
+    localStorage.removeItem('userAvatar')
 
     chats.value = []
     currentChatId.value = null
@@ -95,8 +96,22 @@ export const useChat = defineStore('chat', () => {
     currentUser.value = { ...currentUser.value, ...userInfo }
     if (userInfo.email !== undefined) userEmail.value = userInfo.email
     if (userInfo.phone !== undefined) userPhone.value = userInfo.phone
-    if (userInfo.avatar !== undefined) userAvatar.value = userInfo.avatar
+    if (userInfo.avatar !== undefined || userInfo.avatarUrl !== undefined) {
+      userAvatar.value = userInfo.avatar || userInfo.avatarUrl || ''
+      if (userAvatar.value) {
+        localStorage.setItem('userAvatar', userAvatar.value)
+      } else {
+        localStorage.removeItem('userAvatar')
+      }
+    }
     localStorage.setItem('userInfo', JSON.stringify(currentUser.value))
+  }
+
+  const refreshCurrentUser = async (uid = userId.value) => {
+    if (!uid || uid === 'guest') return currentUser.value
+    const user = await getUserInfo(uid)
+    updateUserInfo(user)
+    return user
   }
 
   // 头像下拉和用户中心统一读取这里的日/月标准 token 额度。
@@ -290,6 +305,7 @@ export const useChat = defineStore('chat', () => {
     login,
     logout,
     updateUserInfo,
+    refreshCurrentUser,
     initFromLocalStorage,
     loadUserSessions,
     loadSessionHistory,

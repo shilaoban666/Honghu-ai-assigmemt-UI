@@ -181,6 +181,26 @@ export const getUserInfo = async (userId) => {
   }
 }
 
+export const uploadUserAvatar = async (userId, file) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await authClient.post(`/users/${userId}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 30000
+    })
+    return response.data
+  } catch (error) {
+    console.error('上传用户头像失败:', error.response?.data || error.message)
+    throw {
+      status: error.response?.status || 500,
+      message: error.response?.data?.message || error.response?.data?.error || error.message
+    }
+  }
+}
+
 /**
  * 更新用户信息
  * @param {string} userId - 用户ID
