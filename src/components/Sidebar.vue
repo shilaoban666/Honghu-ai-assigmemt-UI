@@ -513,15 +513,15 @@ const stopResize = () => {
   padding: 8px 12px;
   background: none;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
   text-align: left;
   line-height: 1.3;
 }
-.nav-row:hover { background: var(--hover-bg); }
+.nav-row:hover { background: var(--hover-bg); transform: translateX(1px); }
 .nav-row svg { flex-shrink: 0; color: var(--text-sub); }
 
 /* ── Agent 行 ── */
@@ -597,12 +597,12 @@ const stopResize = () => {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.16s ease, transform 0.16s ease;
   position: relative;
 }
-.session-item:hover { background: var(--hover-bg); }
+.session-item:hover { background: var(--hover-bg); transform: translateX(1px); }
 .session-item.active { background: var(--hover-bg-medium); }
 
 .session-title {
@@ -692,6 +692,8 @@ const stopResize = () => {
 
 /* ── 底部 Footer ── */
 .sidebar-footer {
+  display: grid;
+  gap: 8px;
   padding: 6px 10px;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;

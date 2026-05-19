@@ -85,7 +85,7 @@
               </div>
               <div class="up-user-info">
                 <span class="up-username">{{ chatStore.isLoggedIn ? chatStore.username : t('notLoggedInMsg') }}</span>
-                <span v-if="chatStore.isLoggedIn" class="up-badge">{{ t('freePlan') }}</span>
+                <span v-if="chatStore.isLoggedIn" class="up-badge">{{ identityDisplay }}</span>
               </div>
               <button v-if="chatStore.isLoggedIn" class="up-settings-icon" @click="openSettings" :title="t('settings')">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -123,13 +123,24 @@
             </div>
 
             <!-- Token 使用量 -->
-            <div class="up-quota">
+            <div
+              class="up-quota"
+              role="button"
+              tabindex="0"
+              @click="openSettingsTarget('plan/usage')"
+              @keydown.enter.prevent="openSettingsTarget('plan/usage')"
+              @keydown.space.prevent="openSettingsTarget('plan/usage')"
+            >
               <div class="up-quota-header">
-                <span class="up-quota-label">{{ t('freeQuota') }}</span>
+                <span class="up-quota-label">月度标准 Token</span>
                 <span class="up-quota-value">{{ tokenUsedDisplay }} / {{ tokenTotalDisplay }}</span>
               </div>
               <div class="up-progress-track">
-                <div class="up-progress-fill" :style="{ width: tokenPercent + '%' }"></div>
+                <div :class="['up-progress-fill', tokenLevel]" :style="{ width: tokenPercent + '%' }"></div>
+              </div>
+              <div class="up-quota-meta">
+                <span>已用 {{ tokenUsedDisplay }}</span>
+                <span>剩余 {{ tokenRemainingDisplay }}</span>
               </div>
             </div>
 
@@ -141,11 +152,11 @@
                 <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span>{{ t('appSettings') }}</span>
               </button>
-              <button class="up-menu-item" @click="handlePanelAction('memory')">
+              <button class="up-menu-item" @click="openSettingsTarget('agent/memory')">
                 <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                 <span>{{ t('memoryLabel') }}</span>
               </button>
-              <button class="up-menu-item" @click="handlePanelAction('upgrade')">
+              <button class="up-menu-item" @click="openSettingsTarget('plan/overview')">
                 <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                 <span>{{ t('upgradePlan') }}</span>
               </button>
@@ -177,11 +188,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { useChat } from '@/stores/chatStore'
 import { t } from '@/utils/i18n'
 import ShareDialog from '@/components/ShareDialog.vue'
 
 const chatStore = useChat()
+const router = useRouter()
 
 const props = defineProps({
   currentChat: { type: Object, default: null }
@@ -201,24 +214,43 @@ const topicCount = computed(() => chatStore.chats.length)
 const totalMessages = computed(() => {
   return chatStore.chats.reduce((sum, c) => sum + (c.messages?.length || 0), 0)
 })
+const identityDisplay = computed(() => chatStore.identityLabel || chatStore.userRole || '用户')
 
 // Token 使用量（模拟数据，后期可对接 API）
-const tokenUsed = computed(() => {
-  const msgs = totalMessages.value
-  return Math.min(msgs * 800, 500000)
+// Token 额度来自后端 QuotaSnapshot，主界面展示月度标准 token。
+const activeQuota = computed(() => chatStore.quotaSnapshot?.monthly || null)
+const fallbackTokenLimit = 500000
+
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const formatToken = (value) => {
+  const n = toNumber(value)
+  if (n >= 1000000000) return `${(n / 1000000000).toFixed(2)}B`
+  if (n >= 1000000) return `${(n / 1000000).toFixed(2)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return `${Math.round(n)}`
+}
+
+const tokenUsed = computed(() => toNumber(activeQuota.value?.tokenUsed, 0))
+const tokenTotal = computed(() => {
+  if (activeQuota.value?.unlimited) return null
+  return toNumber(activeQuota.value?.tokenLimit, fallbackTokenLimit)
 })
-const tokenTotal = 500000
-const tokenPercent = computed(() => Math.min((tokenUsed.value / tokenTotal) * 100, 100))
-const tokenUsedDisplay = computed(() => {
-  if (tokenUsed.value >= 1000000) return (tokenUsed.value / 1000000).toFixed(1) + 'M'
-  if (tokenUsed.value >= 1000) return (tokenUsed.value / 1000).toFixed(1) + 'K'
-  return tokenUsed.value
+const tokenRemaining = computed(() => {
+  if (activeQuota.value?.unlimited || tokenTotal.value == null) return null
+  return Math.max(0, tokenTotal.value - tokenUsed.value)
 })
-const tokenTotalDisplay = computed(() => {
-  if (tokenTotal >= 1000000) return (tokenTotal / 1000000).toFixed(1) + 'M'
-  if (tokenTotal >= 1000) return (tokenTotal / 1000).toFixed(1) + 'K'
-  return tokenTotal
+const tokenPercent = computed(() => {
+  if (!tokenTotal.value) return 0
+  return Math.min(100, Math.max(0, (tokenUsed.value / tokenTotal.value) * 100))
 })
+const tokenLevel = computed(() => tokenPercent.value >= 95 ? 'danger' : tokenPercent.value >= 80 ? 'warn' : '')
+const tokenUsedDisplay = computed(() => formatToken(tokenUsed.value))
+const tokenTotalDisplay = computed(() => activeQuota.value?.unlimited ? '不限' : formatToken(tokenTotal.value))
+const tokenRemainingDisplay = computed(() => activeQuota.value?.unlimited ? '不限' : formatToken(tokenRemaining.value))
 
 const exportChat = () => {
   alert(t('exportDeveloping'))
@@ -250,12 +282,17 @@ const handleAction = (action) => {
 
 const openSettings = () => {
   showUserPanel.value = false
-  emit('open-settings')
+  router.push('/settings/general/appearance')
+}
+
+const openSettingsTarget = (target) => {
+  showUserPanel.value = false
+  router.push(`/settings/${target}`)
 }
 
 const openUserProfile = () => {
   showUserPanel.value = false
-  emit('open-profile')
+  router.push('/settings/general/profile')
 }
 
 const handlePanelAction = (action) => {
@@ -403,7 +440,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   width: 300px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 14px;
+  border-radius: 18px;
   box-shadow:
     0 12px 40px rgba(0,0,0,0.12),
     0 4px 12px rgba(0,0,0,0.06);
@@ -471,7 +508,15 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 /* ── Token 用量 ───────────────────────────────── */
 .up-quota {
-  padding: 0 16px 14px;
+  margin: 0 10px 10px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.up-quota:hover {
+  background: var(--hover-bg);
+  transform: translateY(-1px);
 }
 .up-quota-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
@@ -486,6 +531,20 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   height: 100%; border-radius: 3px;
   background: linear-gradient(90deg, var(--primary-color), var(--primary-light, var(--primary-color)));
   transition: width 0.4s ease;
+}
+.up-progress-fill.warn {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+.up-progress-fill.danger {
+  background: linear-gradient(90deg, #dc2626, #ef4444);
+}
+.up-quota-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--text-sub);
 }
 
 /* ── 分隔线 ───────────────────────────────────── */

@@ -1,3 +1,5 @@
+import { buildIdentityHeaders } from '@/api/identity'
+
 /**
  * RAG 文件上传 API
  * 基础路径: /api/v1/rag
@@ -23,7 +25,7 @@ const BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
 export const getUploadUrl = async (userId, { sessionId, fileType, fileName, fileSize }) => {
   const response = await fetch(`${BASE}/rag/${userId}/upload-url`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
+    headers: { 'Content-Type': 'application/json', ...buildIdentityHeaders(userId) },
     credentials: 'include',
     body: JSON.stringify({ sessionId, fileType, fileName, fileSize })
   })

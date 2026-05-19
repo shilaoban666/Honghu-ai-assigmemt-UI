@@ -63,6 +63,11 @@
         rows="1"
       ></textarea>
 
+      <div v-if="showQuotaWarning" class="quota-warning" @click.stop>
+        <span>本月配额即将用尽，剩余 {{ quotaRemainingPercent }}%</span>
+        <button type="button" @click="openUsageSettings">查看用量</button>
+      </div>
+
       <!-- 底部工具栏 -->
       <div class="toolbar">
         <!-- 左侧图标组 -->
@@ -277,6 +282,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useChat } from '@/stores/chatStore'
 import { persistentStreamChat } from '@/api/chat'
 import { getUploadUrl, uploadFileToS3, registerUploadedFile, subscribeFileStatus, getFileExtension } from '@/api/rag'
@@ -290,6 +296,7 @@ defineProps({
 const emit = defineEmits(['send-message'])
 
 const chatStore = useChat()
+const router = useRouter()
 const message = ref('')
 const attachedFiles = ref([])
 const fileInput = ref(null)
@@ -312,6 +319,18 @@ const screenshotImage = ref(null)
 
 // 移动端检测
 const isMobileDevice = computed(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
+const monthlyQuota = computed(() => chatStore.quotaSnapshot?.monthly || null)
+const quotaWarningEnabled = computed(() => localStorage.getItem('quotaWarning') !== 'false')
+const quotaRemainingPercent = computed(() => {
+  const quota = monthlyQuota.value
+  if (!quota || quota.unlimited) return 100
+  const used = Number(quota.tokenUsed || 0)
+  const limit = Number(quota.tokenLimit || 0)
+  if (!limit) return 100
+  return Math.max(0, Math.round(100 - (used / limit) * 100))
+})
+const showQuotaWarning = computed(() => chatStore.isLoggedIn && quotaWarningEnabled.value && quotaRemainingPercent.value < 10)
+const openUsageSettings = () => router.push('/settings/plan/usage')
 
 // 技能标签
 const activeSkillTags = ref([])
@@ -777,9 +796,9 @@ const autoResize = (e) => {
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
-  border-radius: 18px;
+  border-radius: 22px;
   border: 1.5px solid var(--border-color);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
   transition: border-color 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -1012,6 +1031,29 @@ const autoResize = (e) => {
 }
 .chat-textarea::placeholder {
   color: var(--text-sub);
+}
+
+.quota-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 12px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #9a5b00;
+  font-size: 12px;
+}
+
+.quota-warning button {
+  border: none;
+  background: transparent;
+  color: #9a5b00;
+  cursor: pointer;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ─── 底部工具栏 ─── */

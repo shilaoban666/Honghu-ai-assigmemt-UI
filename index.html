@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Chat - DeepSeek Style</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f8d60'/%3E%3Cpath d='M18 38c8-16 20-16 28 0M23 25h18M28 18h8' stroke='white' stroke-width='5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
     <style>
         * {
             margin: 0;
@@ -19,112 +20,10 @@
             width: 100%;
             height: 100%;
         }
-        .debug-info {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: #0f0;
-            padding: 10px;
-            font-size: 12px;
-            font-family: monospace;
-            z-index: 9999;
-            max-width: 300px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            border: 1px solid #0f0;
-            border-radius: 4px;
-        }
-        .debug-info.show {
-            display: block;
-        }
-        .debug-toggle {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.6);
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 8px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            border-radius: 4px;
-            z-index: 9999;
-            font-family: monospace;
-        }
-        .debug-toggle:hover {
-            background: rgba(0,0,0,0.8);
-        }
     </style>
 </head>
 <body>
     <div id="app"></div>
-    <div class="debug-info" id="debug"></div>
-    <button class="debug-toggle" id="debugToggle">🔧 Debug</button>
-    
-    <script>
-        // 全局错误捕获
-        const debugLog = [];
-        const debugElem = document.getElementById('debug');
-        const debugToggle = document.getElementById('debugToggle');
-        
-        function log(msg) {
-            console.log(msg);
-            debugLog.push(msg);
-            updateDebugDisplay();
-        }
-        
-        function updateDebugDisplay() {
-            debugElem.innerHTML = debugLog.map(m => '> ' + m).join('<br>');
-        }
-        
-        // 调试按钮切换
-        debugToggle.addEventListener('click', () => {
-            debugElem.classList.toggle('show');
-            debugToggle.textContent = debugElem.classList.contains('show') ? '✓ Debug' : '🔧 Debug';
-        });
-        
-        log('页面加载开始...');
-        
-        window.addEventListener('error', (e) => {
-            log('❌ 全局错误: ' + e.message);
-        });
-        
-        window.addEventListener('unhandledrejection', (e) => {
-            log('❌ 未处理Promise: ' + e.reason);
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            log('✓ DOM加载完成');
-        });
-        
-        window.addEventListener('load', () => {
-            log('✓ 页面加载完成');
-        });
-        
-        // 监听app挂载
-        const observer = new MutationObserver(() => {
-            const app = document.getElementById('app');
-            if (app && app.children.length > 0) {
-                log('✓ Vue应用已挂载');
-                observer.disconnect();
-            }
-        });
-        
-        observer.observe(document.getElementById('app'), {
-            childList: true,
-            subtree: true
-        });
-        
-        setTimeout(() => {
-            const app = document.getElementById('app');
-            if (!app.children.length) {
-                log('⚠️ Vue应用未挂载 (3秒超时)');
-            }
-        }, 3000);
-    </script>
-    
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>

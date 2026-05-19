@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { attachIdentityHeaders } from '@/api/identity'
 
 // API 基础URL - 根据环境变量设置，默认为 localhost:8080
 const API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
@@ -9,6 +10,16 @@ const authClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   }
+})
+
+authClient.interceptors.request.use(config => {
+  const method = String(config.method || 'get').toLowerCase()
+  const url = String(config.url || '')
+  const isLoginOrRegister =
+    method === 'post' &&
+    (url === '/users' || url.startsWith('/users/login'))
+
+  return isLoginOrRegister ? config : attachIdentityHeaders(config)
 })
 
 /**
@@ -176,6 +187,31 @@ export const getUserInfo = async (userId) => {
  * @param {Object} data - 更新数据
  * @returns {Promise}
  */
+/**
+ * 查询普通用户自己的额度快照。
+ *
+ * 后端返回 daily / monthly 两个窗口，里面同时包含标准 token 和金额字段。
+ * 前台主界面主要展示 token，金额只作为辅助对账信息。
+ *
+ * @param {string} userId - 用户 ID
+ * @param {string} [workspaceId] - 可选工作空间 ID，不传则使用用户默认工作空间
+ * @returns {Promise<{daily: Object, monthly: Object}>}
+ */
+export const getUserQuota = async (userId, workspaceId = '') => {
+  try {
+    const response = await authClient.get(`/users/${userId}/quota`, {
+      params: workspaceId ? { workspaceId } : {}
+    })
+    return response.data
+  } catch (error) {
+    console.error('查询用户额度快照失败:', error.response?.data || error.message)
+    throw {
+      status: error.response?.status || 500,
+      message: error.response?.data?.message || error.message
+    }
+  }
+}
+
 export const updateUserInfo = async (userId, data) => {
   try {
     const response = await authClient.put(`/users/${userId}`, data)
