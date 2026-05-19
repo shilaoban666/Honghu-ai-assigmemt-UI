@@ -15,8 +15,8 @@
     --bg-tertiary: #f5faf8;
     --text-primary: #333333;
     --text-title: #1a1a1a;
-    --text-sub: #9ab8a8;
-    --subtitle-color: #8ba599;
+    --text-sub: #789a88;
+    --subtitle-color: #6f8f80;
     --border-color: rgba(74, 157, 111, 0.15);
     --menu-border: #d0e4d8;
     --hover-bg: rgba(74, 157, 111, 0.06);
@@ -87,6 +87,14 @@ html.dark-mode {
     --hover-bg-strong: #333333;
     background-color: #1a1a1a;
     color: #ffffff;
+}
+
+html.dark-mode[data-theme="green"],
+html.dark-mode:not([data-theme]) {
+    --primary-color: #2d8659;
+    --primary-light: #4a9d6f;
+    --theme-gradient-from: #2d8659;
+    --theme-gradient-to: #4a9d6f;
 }
 
 html.dark-mode #app {
@@ -212,6 +220,73 @@ html.dark-mode body {
 :root[data-font-size="large"] {
     --chat-font-size: 17px;
     --chat-line-height: 1.8;
+}
+
+:root {
+    --chat-scale: 1;
+    --code-bg: #f7f8fa;
+    --code-fg: #27313a;
+    --code-keyword: #7c3aed;
+    --code-string: #168a45;
+    --code-number: #d97706;
+    --mermaid-bg: #ffffff;
+    --mermaid-line: #d6d9dd;
+    --mermaid-accent: var(--primary-color);
+}
+
+:root[data-font-size="custom"] {
+    --chat-font-size: calc(15px * var(--chat-scale));
+    --chat-line-height: 1.78;
+}
+
+:root[data-code-theme="lobe"] {
+    --code-bg: #f7f8fa;
+    --code-fg: #27313a;
+    --code-keyword: #7c3aed;
+    --code-string: #168a45;
+    --code-number: #d97706;
+}
+
+:root[data-code-theme="github"] {
+    --code-bg: #f6f8fa;
+    --code-fg: #24292f;
+    --code-keyword: #cf222e;
+    --code-string: #0a3069;
+    --code-number: #0550ae;
+}
+
+:root[data-code-theme="night"] {
+    --code-bg: #10151f;
+    --code-fg: #d8e2ef;
+    --code-keyword: #c084fc;
+    --code-string: #86efac;
+    --code-number: #fbbf24;
+}
+
+:root[data-code-theme="solarized"] {
+    --code-bg: #fdf6e3;
+    --code-fg: #586e75;
+    --code-keyword: #6c71c4;
+    --code-string: #2aa198;
+    --code-number: #cb4b16;
+}
+
+:root[data-mermaid-theme="lobe"] {
+    --mermaid-bg: #ffffff;
+    --mermaid-line: #d6d9dd;
+    --mermaid-accent: var(--primary-color);
+}
+
+:root[data-mermaid-theme="contrast"] {
+    --mermaid-bg: #f8fafc;
+    --mermaid-line: #94a3b8;
+    --mermaid-accent: #2563eb;
+}
+
+:root[data-mermaid-theme="dark"] {
+    --mermaid-bg: #111827;
+    --mermaid-line: #475569;
+    --mermaid-accent: #22c55e;
 }
 
 /* ===== 消息样式 (平铺模式) ===== */
@@ -423,7 +498,7 @@ html.dark-mode .message-text-formatted .unordered-item {
 }
 
 html.dark-mode .message-text-formatted .code-block {
-    background: #2a2a2a;
+    background: var(--code-bg, #2a2a2a);
     color: #e0e0e0;
 }
 
@@ -614,6 +689,163 @@ html.dark-mode .btn-save {
 html.dark-mode .logout-btn {
     background: #ff6b6b;
     color: white;
+}
+
+/* ===== 全页设置中心深色质感兜底 ===== */
+html.dark-mode .settings-page {
+    background:
+        radial-gradient(circle at 18% 10%, rgba(255,255,255,.035), transparent 28%),
+        linear-gradient(135deg, #111111 0%, #171717 48%, #0d0d0d 100%) !important;
+}
+
+html.dark-mode .settings-sidebar {
+    border-right-color: rgba(255,255,255,.10) !important;
+    background: #151515 !important;
+    box-shadow: inset -1px 0 0 rgba(255,255,255,.035) !important;
+}
+
+html.dark-mode .settings-main {
+    color: #eef7f1 !important;
+}
+
+html.dark-mode .settings-title {
+    border-bottom-color: color-mix(in srgb, var(--primary-color) 18%, rgba(255,255,255,.08)) !important;
+    color: #f2fbf5 !important;
+    text-shadow: 0 0 24px color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+html.dark-mode .settings-card,
+html.dark-mode .glass-card {
+    border-color: rgba(255,255,255,.10) !important;
+    background:
+        linear-gradient(180deg, rgba(31, 31, 31, .92), rgba(22, 22, 22, .90)) !important;
+    color: #eef7f1 !important;
+    box-shadow:
+        0 24px 70px rgba(0, 0, 0, .32),
+        inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+
+html.dark-mode .settings-card:hover,
+html.dark-mode .glass-card:hover {
+    border-color: rgba(255,255,255,.16) !important;
+    box-shadow:
+        0 30px 82px rgba(0, 0, 0, .42),
+        0 0 0 1px color-mix(in srgb, var(--primary-color) 7%, transparent),
+        inset 0 1px 0 rgba(255,255,255,.07) !important;
+}
+
+html.dark-mode .card-head {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)) !important;
+    border-bottom: 1px solid rgba(255,255,255,.045) !important;
+}
+
+html.dark-mode .card-head h2,
+html.dark-mode .setting-name,
+html.dark-mode .metric-tile strong,
+html.dark-mode .top-list h3,
+html.dark-mode .top-row,
+html.dark-mode .usage-metrics strong,
+html.dark-mode .quota-head span,
+html.dark-mode .quota-head strong {
+    color: #edf8f1 !important;
+}
+
+html.dark-mode .card-head p,
+html.dark-mode .setting-desc,
+html.dark-mode .metric-tile span,
+html.dark-mode .metric-tile em,
+html.dark-mode .top-labels,
+html.dark-mode .empty,
+html.dark-mode .usage-metrics span,
+html.dark-mode .usage-metrics small,
+html.dark-mode .quota-foot {
+    color: rgba(196, 214, 204, .72) !important;
+}
+
+html.dark-mode .setting-row,
+html.dark-mode .usage-table-head,
+html.dark-mode .usage-table-row {
+    border-bottom-color: color-mix(in srgb, var(--primary-color) 14%, rgba(255,255,255,.06)) !important;
+}
+
+html.dark-mode .setting-select,
+html.dark-mode .font-number,
+html.dark-mode .usage-toolbar input,
+html.dark-mode .usage-toolbar select,
+html.dark-mode .usage-toolbar button,
+html.dark-mode .mobile-select select {
+    border-color: color-mix(in srgb, var(--primary-color) 20%, rgba(255,255,255,.08)) !important;
+    background: rgba(12, 18, 15, .82) !important;
+    color: #eef7f1 !important;
+}
+
+html.dark-mode .segmented-control,
+html.dark-mode .metric-tile,
+html.dark-mode .activity-panel,
+html.dark-mode .top-row,
+html.dark-mode .quota-progress,
+html.dark-mode .model-legend div,
+html.dark-mode .usage-metrics div,
+html.dark-mode .font-sample {
+    border-color: rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.04) !important;
+}
+
+html.dark-mode .app-preview,
+html.dark-mode .mermaid-preview,
+html.dark-mode .mode-preview {
+    border-color: color-mix(in srgb, var(--primary-color) 22%, rgba(255,255,255,.08)) !important;
+}
+
+html.dark-mode .app-preview {
+    background:
+        radial-gradient(circle at 72% 18%, color-mix(in srgb, var(--primary-color) 24%, transparent), transparent 34%),
+        linear-gradient(135deg, #101914, #0c120f) !important;
+}
+
+html.dark-mode .preview-sidebar {
+    background: rgba(255,255,255,.055) !important;
+}
+
+html.dark-mode .node {
+    background: rgba(16, 25, 20, .94) !important;
+    color: #eef7f1 !important;
+}
+
+html.dark-mode .close-settings {
+    border-color: color-mix(in srgb, var(--primary-color) 22%, rgba(255,255,255,.10)) !important;
+    background: rgba(23, 31, 27, .76) !important;
+    color: rgba(214, 232, 221, .72) !important;
+    box-shadow: 0 16px 42px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+
+html.dark-mode .close-settings:hover {
+    color: var(--primary-light) !important;
+}
+
+html.dark-mode .heatmap-grid .level-0 {
+    background: rgba(255,255,255,.055) !important;
+}
+
+html.dark-mode .heatmap-grid .level-1 {
+    background: color-mix(in srgb, var(--primary-color) 18%, rgba(255,255,255,.055)) !important;
+}
+
+html.dark-mode .heatmap-grid .level-2 {
+    background: color-mix(in srgb, var(--primary-color) 34%, rgba(255,255,255,.055)) !important;
+}
+
+html.dark-mode .heatmap-grid .level-3 {
+    background: color-mix(in srgb, var(--primary-color) 52%, rgba(255,255,255,.055)) !important;
+}
+
+html.dark-mode .heatmap-grid .level-4 {
+    background: color-mix(in srgb, var(--primary-color) 72%, rgba(255,255,255,.055)) !important;
+}
+
+html.dark-mode .heatmap-grid .level-5 {
+    background: var(--primary-color) !important;
 }
 
 /* 输入框样式 - 移除默认蓝色边框 */

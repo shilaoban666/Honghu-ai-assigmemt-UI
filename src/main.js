@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
+import router from './router'
 import './style.css'
 
 async function bootstrap() {
@@ -21,6 +22,9 @@ async function bootstrap() {
   })
 
   app.use(createPinia())
+  if (!window.location.pathname.startsWith('/admin')) {
+    app.use(router)
+  }
   app.mount('#app')
 }
 
