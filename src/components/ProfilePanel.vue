@@ -32,7 +32,10 @@
               </div>
             </div>
             <div class="identity-actions">
-              <button class="soft-btn" type="button" @click="triggerFileInput">上传头像</button>
+              <button class="soft-btn" type="button" :disabled="avatarUploading" @click="triggerFileInput">
+                {{ avatarUploading ? '上传中' : '上传头像' }}
+              </button>
+              <small v-if="avatarError" class="avatar-error">{{ avatarError }}</small>
               <input ref="fileInput" type="file" accept="image/*" @change="handleAvatarUpload" hidden />
             </div>
           </section>
@@ -197,6 +200,13 @@
             @confirm="confirmLogout"
             @cancel="cancelLogout"
           />
+
+          <AvatarCropper
+            v-if="selectedAvatarFile"
+            :file="selectedAvatarFile"
+            @cancel="cancelAvatarCrop"
+            @save="uploadCroppedAvatar"
+          />
         </template>
 
         <template v-else>
@@ -216,6 +226,8 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { uploadUserAvatar } from '@/api/auth'
+import AvatarCropper from '@/components/AvatarCropper.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useChat } from '@/stores/chatStore'
 
@@ -241,6 +253,9 @@ const fileInput = ref(null)
 const editModal = ref(null)
 const editValue = ref('')
 const showLogoutConfirm = ref(false)
+const selectedAvatarFile = ref(null)
+const avatarUploading = ref(false)
+const avatarError = ref('')
 
 const userInfo = reactive({
   name: '',
@@ -260,7 +275,7 @@ watch(() => props.currentUser, (newUser) => {
     userInfo.nickname = newUser.nickname || newUser.username || ''
     userInfo.email = newUser.email || ''
     userInfo.phone = newUser.phone || ''
-    userInfo.avatar = newUser.avatar || localStorage.getItem('userAvatar') || null
+    userInfo.avatar = chatStore.userAvatar || newUser.avatar || newUser.avatarUrl || localStorage.getItem('userAvatar') || null
   }
 }, { deep: true, immediate: true })
 
@@ -363,14 +378,39 @@ const triggerFileInput = () => {
 
 const handleAvatarUpload = (event) => {
   const file = event.target.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    userInfo.avatar = e.target.result
-    localStorage.setItem('userAvatar', userInfo.avatar)
-    chatStore.updateUserInfo({ avatar: userInfo.avatar })
+  event.target.value = ''
+  avatarError.value = ''
+  if (!file) {
+    return
   }
-  reader.readAsDataURL(file)
+  if (!file.type?.startsWith('image/')) {
+    avatarError.value = '请选择图片文件'
+    return
+  }
+  selectedAvatarFile.value = file
+}
+
+const cancelAvatarCrop = () => {
+  selectedAvatarFile.value = null
+}
+
+const uploadCroppedAvatar = async (file) => {
+  if (!chatStore.userId) return
+  avatarUploading.value = true
+  avatarError.value = ''
+  try {
+    const result = await uploadUserAvatar(chatStore.userId, file)
+    userInfo.avatar = result.avatar
+    chatStore.updateUserInfo({
+      avatar: result.avatar,
+      avatarObjectKey: result.avatarObjectKey
+    })
+    selectedAvatarFile.value = null
+  } catch (error) {
+    avatarError.value = error?.message || '头像上传失败'
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
 const refreshQuota = () => {
@@ -624,6 +664,20 @@ const handleRegister = () => {
   color: #286b47;
 }
 
+.identity-actions {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.avatar-error {
+  max-width: 160px;
+  color: #b64232;
+  font-size: 12px;
+  text-align: right;
+}
+
+.soft-btn:disabled,
 .ghost-btn:disabled {
   cursor: not-allowed;
   opacity: 0.58;
