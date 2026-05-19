@@ -143,6 +143,9 @@ const resetError = () => {
 const handleLogin = (loginData) => {
   // 使用chatStore的login方法，然后刷新页面以加载会话数据
   chatStore.login(loginData)
+  chatStore.loadUserQuota(loginData.userId).catch(error => {
+    console.warn('用户额度快照加载失败:', error)
+  })
   console.log('用户登录成功:', loginData)
   showAuthPage.value = false
   window.location.reload()
@@ -159,6 +162,9 @@ const skipLogin = async () => {
       identity: r.identity || 'GUEST',
       identityLabel: r.identityLabel || '',
       availableModels: r.availableModels || []
+    })
+    await chatStore.loadUserQuota(chatStore.userId).catch(error => {
+      console.warn('游客额度快照加载失败:', error)
     })
   } catch {
     // 后端不可用时仍允许跳过
@@ -381,6 +387,9 @@ onMounted(async () => {
     // 已登录时从API加载会话列表（含最新会话历史）
     if (isLoggedIn.value && chatStore.userId) {
       await chatStore.loadUserSessions(chatStore.userId)
+      await chatStore.loadUserQuota(chatStore.userId).catch(error => {
+        console.warn('用户额度快照加载失败:', error)
+      })
     }
     console.log('App 组件已挂载成功，登录状态:', isLoggedIn.value)
   } catch (error) {
