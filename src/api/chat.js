@@ -80,7 +80,8 @@ export const persistentStreamChat = (chatRequest, onData, onError, onComplete) =
     stream: true,
     systemMessage: chatRequest.systemMessage,
     temperature: chatRequest.temperature ?? 0.7,
-    maxTokens: chatRequest.maxTokens ?? 4096
+    maxTokens: chatRequest.maxTokens ?? 4096,
+    attachmentFileIds: chatRequest.attachmentFileIds?.length ? chatRequest.attachmentFileIds : undefined
   }
   return ssePost(`${BASE}/chat/structured/stream/persistent`, body, onData, onError, onComplete)
 }

@@ -32,7 +32,10 @@
                 <span class="file-card-doc-name">{{ truncateName(file.name) }}</span>
                 <span class="file-card-doc-size">
                   <template v-if="file.status === 'uploading'">上传中 {{ file.progress }}%</template>
-                  <template v-else-if="file.status === 'error'">上传失败</template>
+                  <template v-else-if="file.status === 'registering'">登记中…</template>
+                  <template v-else-if="file.status === 'processing'">{{ ragStatusText(file.ragStatus) }}</template>
+                  <template v-else-if="file.status === 'ready'">✓ 已就绪</template>
+                  <template v-else-if="file.status === 'error'">{{ file.errorMsg || '上传失败' }}</template>
                   <template v-else>{{ formatSize(file.size) }}</template>
                 </span>
                 <div v-if="file.status === 'uploading'" class="doc-progress-track">
@@ -276,7 +279,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useChat } from '@/stores/chatStore'
 import { persistentStreamChat } from '@/api/chat'
-import { getUploadUrl, uploadFileToS3, getFileExtension } from '@/api/rag'
+import { getUploadUrl, uploadFileToS3, registerUploadedFile, subscribeFileStatus, getFileExtension } from '@/api/rag'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
 import ScreenshotEditor from '@/components/ScreenshotEditor.vue'
 import { t } from '@/utils/i18n'
@@ -473,7 +476,10 @@ function handleClickOutside(e) {
   }
 }
 onMounted(() => document.addEventListener('click', handleClickOutside))
-onUnmounted(() => document.removeEventListener('click', handleClickOutside))
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  attachedFiles.value.forEach(f => f.closeSSE?.())
+})
 
 // 文件处理
 const triggerFileInput = () => {
@@ -485,14 +491,15 @@ const triggerImageInput = () => {
   imageInput.value?.click()
 }
 
-// ─── RAG 上传核心：获取预签名 URL → 直传 S3 ───────────────────────────────
+// ─── RAG 上传核心：预签名 URL → 直传 S3 → 登记 → SSE 状态跟踪 ──────────────
 const uploadFileToServer = async (rawFile) => {
   const userId = chatStore.userId || localStorage.getItem('userId') || 'guest'
-  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : undefined
+  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : String(chatStore.currentChatId || '')
   const ext = getFileExtension(rawFile.name)
   const findEntry = () => attachedFiles.value.find(f => f.file === rawFile)
 
   try {
+    // Step 1: 获取预签名 URL
     const { uploadUrl, objectKey, contentType, fileId } = await getUploadUrl(userId, {
       sessionId,
       fileType: ext,
@@ -500,17 +507,55 @@ const uploadFileToServer = async (rawFile) => {
       fileSize: rawFile.size
     })
 
+    // Step 2: 直传 S3
     await uploadFileToS3(uploadUrl, rawFile, contentType, (percent) => {
       const entry = findEntry()
       if (entry) entry.progress = percent
     })
 
+    // Step 3: 告知后端登记文件（创建 RECEIVED 记录）
     const entry = findEntry()
     if (entry) {
-      entry.status = 'done'
+      entry.status = 'registering'
       entry.progress = 100
       entry.objectKey = objectKey
       entry.fileId = fileId
+    }
+    await registerUploadedFile(userId, { objectKey, fileName: rawFile.name })
+
+    // Step 7: 订阅 SSE 状态流，跟踪 RAG 处理进度
+    if (entry) {
+      entry.status = 'processing'
+      entry.closeSSE = subscribeFileStatus(fileId, userId, {
+        timeoutSeconds: 120,
+        pollIntervalMillis: 2000,
+        onStatus: (data) => {
+          const e = findEntry()
+          if (!e) return
+          e.ragStatus = data.ragStatus
+          e.detailMessage = data.detailMessage
+          if (data.completed) {
+            e.status = data.availableForChat ? 'ready' : 'error'
+            e.errorMsg = data.availableForChat ? null : (data.detailMessage || 'RAG 处理未完成')
+          }
+        },
+        onTimeout: (data) => {
+          const e = findEntry()
+          if (e && !data.completed) e.status = 'processing' // 仍在处理，保持状态
+        },
+        onError: async () => {
+          // SSE 断开降级：单次轮询
+          try {
+            const { getFileStatus } = await import('@/api/rag')
+            const data = await getFileStatus(fileId, userId)
+            const e = findEntry()
+            if (e && data.completed) {
+              e.status = data.availableForChat ? 'ready' : 'error'
+              e.errorMsg = data.availableForChat ? null : (data.detailMessage || 'RAG 处理未完成')
+            }
+          } catch { /* 静默失败 */ }
+        }
+      })
     }
   } catch (err) {
     console.error('[RAG] 文件上传失败:', err)
@@ -598,7 +643,11 @@ const handleScreenshotConfirm = (file) => {
   screenshotImage.value = null
 }
 
-const removeFile = (index) => attachedFiles.value.splice(index, 1)
+const removeFile = (index) => {
+  const entry = attachedFiles.value[index]
+  entry?.closeSSE?.()
+  attachedFiles.value.splice(index, 1)
+}
 
 // 文件预览辅助
 const isImageFile = (f) => {
@@ -626,6 +675,19 @@ const formatSize = (bytes) => {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
+const ragStatusText = (rs) => ({
+  RECEIVED:    '已接收',
+  PARSING:     '解析中…',
+  DOWNLOADING: '下载中…',
+  EXTRACTING:  '抽取文本…',
+  CHUNKING:    '分块中…',
+  EMBEDDING:   '向量化…',
+  INDEXING:    '索引中…',
+  SUCCESS:     '处理完成',
+  SKIPPED:     '已跳过',
+  FAILED:      '处理失败',
+})[rs] || 'RAG 处理中…'
+
 // 回车键处理
 const handleEnterKey = (e) => {
   const shortcut = localStorage.getItem('sendShortcut') || 'enter'
@@ -646,28 +708,30 @@ const handleEnterKey = (e) => {
 // 发送
 const sendMessage = () => {
   if (!message.value.trim()) return
-  // 有文件还在上传中，阻止发送
-  if (attachedFiles.value.some(f => f.status === 'uploading')) return
+  // 有文件还在上传/处理中，阻止发送
+  if (attachedFiles.value.some(f => ['uploading', 'registering', 'processing'].includes(f.status))) return
   const content = message.value.trim()
   const files = attachedFiles.value.map(f => ({
-    file: f.file,
     objectKey: f.objectKey,
     fileId: f.fileId,
     name: f.name,
-    size: f.size
+    size: f.size,
+    isImage: isImageFile(f),
+    previewUrl: getFilePreviewUrl(f),
   }))
 
   emit('send-message', { content, files, model: selectedModel.value, isUserMessage: true })
   emit('send-message', { content: '', isStreaming: true, isUserMessage: false, timestamp: Date.now(), isInitialMessage: true })
 
-  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : undefined
+  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : String(chatStore.currentChatId || '')
   const chatRequest = {
     message: content,
     sessionId,
     model: selectedModel.value || null,
     systemMessage: '你是一个有帮助的AI助手，请用中文回答问题',
     temperature: 0.7,
-    maxTokens: 4096
+    maxTokens: 4096,
+    attachmentFileIds: files.map(f => f.fileId).filter(Boolean)
   }
 
   persistentStreamChat(

@@ -166,7 +166,7 @@ export const useChat = defineStore('chat', () => {
 
   const createNewChat = (customTitle = null) => {
     const newChat = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       title: customTitle || '新对话',
       messages: [],
       createdAt: new Date(),
