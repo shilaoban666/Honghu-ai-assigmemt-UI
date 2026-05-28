@@ -7,6 +7,11 @@ const routes = [
     component: () => import('@/layouts/ChatLayout.vue')
   },
   {
+    path: '/skills/marketplace',
+    name: 'mcp-marketplace',
+    component: () => import('@/views/marketplace/McpMarketplaceView.vue')
+  },
+  {
     path: '/settings',
     component: () => import('@/views/settings/SettingsLayout.vue'),
     redirect: '/settings/general/profile',

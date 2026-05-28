@@ -43,8 +43,8 @@
         @open-settings="goSettings('general/appearance')"
         @mobile-close="mobileMenuOpen = false"
         @update:sidebarWidth="w => sidebarWidth = w"
-        @open-skill-plaza="() => {}"
-        @open-mcp-plaza="() => {}"
+        @open-skill-plaza="goSettings('agent/skills')"
+        @open-mcp-plaza="goSettings('agent/skills')"
         @open-agent-plaza="() => {}"
         @open-deep-research="() => {}"
       />
