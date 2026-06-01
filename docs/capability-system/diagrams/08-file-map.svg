@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.box{fill:#f7f5ef;stroke:#aaa69d;stroke-width:1.5;rx:10}.blue{fill:#e8f3ff;stroke:#6aa3df}.green{fill:#dff4ee;stroke:#4ba993}.purple{fill:#eeeaff;stroke:#8b80e8}.orange{fill:#fff1dc;stroke:#d9963a}.label{font:700 16px "Microsoft YaHei",Arial,sans-serif;fill:#333}.file{font:500 13px Consolas,"Microsoft YaHei",monospace;fill:#3f3f3f}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#6c6861}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="760"/>
+  <text x="60" y="58" class="title">本次能力系统文件地图</text>
+  <text x="60" y="86" class="small">阅读代码时可以按“前端状态 → 后端 API → DTO → 数据层 → 测试”顺序进入。</text>
+
+  <rect x="70" y="130" width="505" height="250" class="box blue"/>
+  <text x="95" y="165" class="label">前端</text>
+  <text x="95" y="205" class="file">src/api/capabilities.js</text>
+  <text x="95" y="232" class="file">src/stores/capabilityStore.js</text>
+  <text x="95" y="259" class="file">src/views/marketplace/McpMarketplaceView.vue</text>
+  <text x="95" y="286" class="file">src/components/SkillStoreDialog.vue</text>
+  <text x="95" y="313" class="file">src/components/InputArea.vue</text>
+  <text x="95" y="340" class="file">src/views/settings/agent/SkillsView.vue</text>
+
+  <rect x="625" y="130" width="505" height="250" class="box green"/>
+  <text x="650" y="165" class="label">后端 API 与服务</text>
+  <text x="650" y="205" class="file">skill/api/CapabilityController.java</text>
+  <text x="650" y="232" class="file">skill/application/CapabilityService.java</text>
+  <text x="650" y="259" class="file">skill/core/SkillSource.java</text>
+  <text x="650" y="286" class="file">skill/mcp/marketplace/McpMarketplaceService.java</text>
+  <text x="650" y="313" class="file">skill/repository/SkillToolRepository.java</text>
+  <text x="650" y="340" class="file">skill/repository/SessionSkillSettingRepository.java</text>
+
+  <rect x="70" y="430" width="505" height="220" class="box purple"/>
+  <text x="95" y="465" class="label">DTO</text>
+  <text x="95" y="505" class="file">CapabilityDto.java</text>
+  <text x="95" y="532" class="file">CapabilityPageDto.java</text>
+  <text x="95" y="559" class="file">CapabilityCategoryDto.java</text>
+  <text x="95" y="586" class="file">CapabilityInstallRequest.java</text>
+  <text x="95" y="613" class="file">SessionSkillToggleRequest.java</text>
+
+  <rect x="625" y="430" width="505" height="220" class="box orange"/>
+  <text x="650" y="465" class="label">数据库与验证</text>
+  <text x="650" y="505" class="file">db.changelog-skills.yaml</text>
+  <text x="650" y="532" class="file">entity/Skill.java jsonb cast</text>
+  <text x="650" y="559" class="file">entity/UserSkillInstall.java jsonb cast</text>
+  <text x="650" y="586" class="file">CapabilityControllerTest.java</text>
+  <text x="650" y="613" class="file">LiquibaseYamlChangelogParseTest.java</text>
+</svg>
