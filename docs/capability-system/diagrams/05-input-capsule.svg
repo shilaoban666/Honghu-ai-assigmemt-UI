@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#7f7b73"/></marker>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.node{rx:10;stroke-width:1.5}.blue{fill:#e8f3ff;stroke:#6aa3df}.green{fill:#dff4ee;stroke:#4ba993}.purple{fill:#eeeaff;stroke:#8b80e8}.orange{fill:#fff1dc;stroke:#d9963a}.neutral{fill:#f7f5ef;stroke:#aaa69d}.label{font:700 16px "Microsoft YaHei",Arial,sans-serif;fill:#333}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#4f4b45}.mono{font:500 12px Consolas,monospace;fill:#555}.line{stroke:#7f7b73;stroke-width:1.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="680"/>
+  <text x="60" y="58" class="title">输入区胶囊过滤规则</text>
+
+  <rect x="70" y="135" width="250" height="120" class="node blue"/>
+  <text x="195" y="174" text-anchor="middle" class="label">后端 session 能力</text>
+  <text x="195" y="202" text-anchor="middle" class="small">包含系统底座和用户能力</text>
+  <text x="195" y="226" text-anchor="middle" class="mono">time / user_context / cli:git...</text>
+
+  <rect x="445" y="135" width="300" height="120" class="node purple"/>
+  <text x="595" y="174" text-anchor="middle" class="label">capabilityStore 写缓存</text>
+  <text x="595" y="202" text-anchor="middle" class="small">enabledSkills 保留完整状态</text>
+  <text x="595" y="226" text-anchor="middle" class="mono">enabledSkillMeta 只写用户可见能力</text>
+
+  <rect x="870" y="135" width="250" height="120" class="node green"/>
+  <text x="995" y="174" text-anchor="middle" class="label">胶囊栏显示</text>
+  <text x="995" y="202" text-anchor="middle" class="small">只展示可操作能力</text>
+  <text x="995" y="226" text-anchor="middle" class="mono">MCP / Skill / CLI</text>
+
+  <rect x="145" y="380" width="255" height="115" class="node orange"/>
+  <text x="272" y="417" text-anchor="middle" class="label">过滤掉</text>
+  <text x="272" y="445" text-anchor="middle" class="small">user_context / time / math</text>
+  <text x="272" y="469" text-anchor="middle" class="mono">SYSTEM_CAPABILITY_KEYS</text>
+
+  <rect x="505" y="380" width="255" height="115" class="node green"/>
+  <text x="632" y="417" text-anchor="middle" class="label">保留</text>
+  <text x="632" y="445" text-anchor="middle" class="small">用户安装或主动开启的能力</text>
+  <text x="632" y="469" text-anchor="middle" class="mono">mcp:* / skill:* / cli:*</text>
+
+  <rect x="865" y="380" width="255" height="115" class="node neutral"/>
+  <text x="992" y="417" text-anchor="middle" class="label">仍然生效</text>
+  <text x="992" y="445" text-anchor="middle" class="small">系统能力不显示但可运行</text>
+  <text x="992" y="469" text-anchor="middle" class="mono">resolver 控制注入</text>
+
+  <path class="line" d="M320 195h125"/>
+  <path class="line" d="M745 195h125"/>
+  <path class="line" d="M595 255v75H272v50"/>
+  <path class="line" d="M595 255v125"/>
+  <path class="line" d="M745 438h120"/>
+</svg>

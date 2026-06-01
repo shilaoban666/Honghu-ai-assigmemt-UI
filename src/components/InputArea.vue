@@ -127,7 +127,7 @@
             </button>
             <Transition name="tool-menu-pop">
               <div v-if="showSkillToolsMenu" class="skill-tools-menu" @click.stop>
-                <div class="skill-menu-title">已安装能力</div>
+                <div class="skill-menu-title">已装载能力和工具</div>
                 <button class="skill-menu-row resource-row" @click="openResourceLibrary">
                   <span class="skill-menu-left">
                     <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" stroke-width="1.8" stroke-linejoin="round"/></svg>
@@ -148,30 +148,32 @@
                 <div class="skill-menu-row has-submenu">
                   <span class="skill-menu-left">
                     <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/></svg>
-                    <span>技能</span>
-                    <span class="auto-badge">自动 {{ menuSkillCount }}</span>
+                    <span>工具</span>
+                    <span class="auto-badge">{{ enabledToolCount }}</span>
                   </span>
                   <span class="skill-menu-chevron">›</span>
                   <div class="skill-cascade-panel skill-submenu">
                     <div class="submenu-head">
-                      <span>已安装技能</span>
-                      <small>单击启用到本会话</small>
+                      <span>已安装工具</span>
+                      <small>工具帮助AI连接万物</small>
                     </div>
                     <button
-                      v-for="skill in installedSelectableSkills"
+                      v-for="skill in installedToolItems"
                       :key="skill.id"
                       class="cascade-item"
                       :class="{ active: isSkillEnabled(skill.id) }"
                       @click.stop="toggleSkillById(skill.id)"
+                      :title="menuEnabledTitle(skill)"
                     >
                       <span class="cascade-icon" :class="{ text: skill.icon.length > 1 }">{{ skill.icon }}</span>
                       <span class="cascade-copy">
                         <strong>{{ skill.name }}</strong>
                         <small>{{ skill.menuDesc }}</small>
                       </span>
-                      <span class="cascade-state">{{ isSkillEnabled(skill.id) ? '✓' : '+' }}</span>
+                      <span class="cascade-state">{{ isSkillEnabled(skill.id) ? '✓' : '○' }}</span>
                     </button>
-                    <button class="cascade-manage" @click.stop="openSkillStore">打开技能商店</button>
+                    <div v-if="installedToolItems.length === 0" class="cascade-empty">还没有已安装工具</div>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
                   </div>
                 </div>
                 <div class="skill-menu-row has-submenu cli-row" :class="{ active: cliEnabled }">
@@ -183,8 +185,8 @@
                   <span class="skill-menu-chevron">›</span>
                   <div class="skill-cascade-panel cli-submenu">
                     <div class="submenu-head">
-                      <span>已安装 CLI</span>
-                      <small>本地工具按需注入</small>
+                      <span>已安装命令行</span>
+                      <small>命令帮助AI操作电脑</small>
                     </div>
                     <button
                       v-for="cli in installedCliTools"
@@ -192,15 +194,47 @@
                       class="cascade-item"
                       :class="{ active: isCliEnabled(cli.id) }"
                       @click.stop="toggleCliTool(cli.id)"
+                      :title="menuEnabledTitle(cli)"
                     >
                       <span class="cascade-icon terminal">{{ cli.icon }}</span>
                       <span class="cascade-copy">
                         <strong>{{ cli.name }}</strong>
                         <small>{{ cli.menuDesc }}</small>
                       </span>
-                      <span class="cascade-state">{{ isCliEnabled(cli.id) ? '✓' : '+' }}</span>
+                      <span class="cascade-state">{{ isCliEnabled(cli.id) ? '✓' : '○' }}</span>
                     </button>
-                    <button class="cascade-manage" @click.stop="openSkillStore">管理 CLI 技能</button>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
+                  </div>
+                </div>
+                <div class="skill-menu-row has-submenu">
+                  <span class="skill-menu-left">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 3l2.2 4.8L19 9l-3.8 3.2L16 18l-4-2.6L8 18l.8-5.8L5 9l4.8-1.2L12 3z" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                    <span>技能</span>
+                    <span class="auto-badge">{{ enabledClaudeSkillCount }}</span>
+                  </span>
+                  <span class="skill-menu-chevron">›</span>
+                  <div class="skill-cascade-panel skill-submenu">
+                    <div class="submenu-head">
+                      <span>已安装技能</span>
+                      <small>技能帮助AI掌握不同领域经验</small>
+                    </div>
+                    <button
+                      v-for="skill in installedClaudeSkills"
+                      :key="skill.id"
+                      class="cascade-item"
+                      :class="{ active: isSkillEnabled(skill.id) }"
+                      @click.stop="toggleSkillById(skill.id)"
+                      :title="menuEnabledTitle(skill)"
+                    >
+                      <span class="cascade-icon" :class="{ text: skill.icon.length > 1 }">{{ skill.icon }}</span>
+                      <span class="cascade-copy">
+                        <strong>{{ skill.name }}</strong>
+                        <small>{{ skill.menuDesc }}</small>
+                      </span>
+                      <span class="cascade-state">{{ isSkillEnabled(skill.id) ? '✓' : '○' }}</span>
+                    </button>
+                    <div v-if="installedClaudeSkills.length === 0" class="cascade-empty">还没有已安装技能</div>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
                   </div>
                 </div>
               </div>
@@ -369,6 +403,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChat } from '@/stores/chatStore'
+import { useCapabilityStore, SYSTEM_CAPABILITY_KEYS, isSystemCapability } from '@/stores/capabilityStore'
 import { persistentStreamChat } from '@/api/chat'
 import { getUploadUrl, uploadFileToS3, registerUploadedFile, subscribeFileStatus, getFileExtension } from '@/api/rag'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
@@ -382,6 +417,7 @@ defineProps({
 const emit = defineEmits(['send-message'])
 
 const chatStore = useChat()
+const capabilityStore = useCapabilityStore()
 const router = useRouter()
 const message = ref('')
 const attachedFiles = ref([])
@@ -418,7 +454,8 @@ const readJsonStorage = (key, fallback) => {
     return fallback
   }
 }
-// 当前会话启用的技能 id 列表；默认包含时间、计算器、资料库、记忆，保持新会话开箱可用。
+// 当前会话启用的能力 id 列表；它包含系统内置能力和用户安装能力。
+// 胶囊栏不会直接使用这个数组，因为 user_context、time、math 这类系统能力不应该显示成可删除标签。
 const enabledSkillIds = ref(readJsonStorage('enabledSkills', ['time', 'math', 'memory']))
 // 输入区菜单使用的技能目录；group 决定它应该出现在“技能”还是“CLI”级联面板里。
 // 资料库不是会话级技能，而是面向所有会话的全局文档库，已抽到独立的“文件 / 资源库”入口，故不在此目录中。
@@ -444,39 +481,52 @@ const enabledCliIds = ref(readJsonStorage('enabledCliTools', ['cli']))
 // 全网 MCP 商店会把 mcp:market-* 的展示名写入 enabledSkillMeta；
 // 输入区读取它后，新增 MCP 才能马上出现在胶囊栏和级联菜单，而不是只显示一个生硬 id。
 const dynamicSkillMeta = ref(readJsonStorage('enabledSkillMeta', {}))
-// 全网 CLI 商店新增的 cli:* 会写入 enabledSkillMeta。这里把它们合并进 CLI 级联菜单，
-// 保证“已安装 CLI”不只出现在设置页统计里，也能在输入框下方的级联菜单中继续选择和关闭。
-const installedCliTools = computed(() => {
-  const knownIds = new Set(baseInstalledCliTools.map(tool => tool.id))
-  const dynamicCliTools = Object.values(dynamicSkillMeta.value)
-    .filter(tool => tool?.id && !knownIds.has(tool.id))
-    .filter(tool => tool.group === 'cli' || tool.source === 'CLI' || String(tool.id).startsWith('cli:'))
-    .map(tool => ({
-      id: tool.id,
-      name: tool.name || tool.id,
-      icon: tool.icon || 'CLI',
-      menuDesc: tool.menuDesc || '全网 CLI 能力'
-    }))
-  return [...baseInstalledCliTools, ...dynamicCliTools]
+// 输入区下方的胶囊栏只展示用户能主动选择、安装、关闭的能力。
+// 系统上下文类能力虽然会出现在后端 session 解析结果里，但它们属于运行时底座，
+// 不应像截图中的“用户身份”那样占用用户的技能胶囊空间。
+const isUserVisibleCapability = (capability = {}) => {
+  const key = capability.skillKey || capability.id || ''
+  return !SYSTEM_CAPABILITY_KEYS.has(key) && !isSystemCapability(capability)
+}
+// 「已安装能力」级联菜单（工具/命令行/技能）的统一数据源：
+// 直接取后端会话/已安装能力，只保留“已启用（含必装）”，与背包弹窗里的「我的」用同一批数据，保证两处一致。
+const myEnabledCapabilities = computed(() => {
+  const items = capabilityStore.sessionCapabilities.length ? capabilityStore.sessionCapabilities : capabilityStore.installed
+  return items.filter(c => c && (c.enabled || c.mandatory))
 })
+// 能力按 kind 归到 工具 / 命令行 / 技能 三个子菜单：内置工具+MCP→工具，cli→命令行，claude skill→技能。
+const capabilityMenuGroup = (c) => (c.kind === 'cli' ? 'cli' : c.kind === 'skill' ? 'skill' : 'tool')
+const capabilityToMenuItem = (c) => ({
+  id: c.skillKey,
+  name: c.name || c.skillKey,
+  icon: c.icon || (c.kind === 'mcp' ? 'MCP' : c.kind === 'cli' ? '>_' : '技'),
+  menuDesc: c.description || c.category || '',
+  enabledAt: c.enabledAt || null
+})
+// 命令行子菜单 = 后端已启用的 CLI 能力。
+const installedCliTools = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'cli').map(capabilityToMenuItem))
 const fullSkillCatalog = computed(() => {
   const knownIds = new Set(skillChipCatalog.map(skill => skill.id))
   const dynamicSkills = Object.values(dynamicSkillMeta.value)
     .filter(skill => skill?.id && !knownIds.has(skill.id))
+    .filter(skill => isUserVisibleCapability({ id: skill.id, skillKey: skill.id, kind: skill.group, source: skill.source }))
     .map(skill => ({
       id: skill.id,
       name: skill.name || skill.id,
       icon: skill.icon || 'MCP',
       mandatory: false,
       group: skill.group || 'skill',
-      menuDesc: skill.menuDesc || '全网 MCP 技能'
+      menuDesc: skill.menuDesc || '全网 MCP 技能',
+      enabledAt: skill.enabledAt || null
     }))
   return [...skillChipCatalog, ...dynamicSkills]
 })
 // 胶囊栏和菜单都只需要展示已启用技能，因此先用 Set 做一次快速筛选。
 const installedSkillChips = computed(() => {
   const selected = new Set(enabledSkillIds.value)
-  return fullSkillCatalog.value.filter(skill => selected.has(skill.id))
+  return fullSkillCatalog.value
+    .filter(skill => selected.has(skill.id))
+    .filter(skill => isUserVisibleCapability({ id: skill.id, skillKey: skill.id, kind: skill.group, source: skill.source }))
 })
 // 胶囊栏空间有限，只显示非必装技能的前 3 个；时间和计算器这种必装项不挤占视觉空间。
 const pillSkillChips = computed(() => installedSkillChips.value.filter(skill => !skill.mandatory).slice(0, 3))
@@ -487,9 +537,21 @@ const memoryEnabled = computed(() => enabledSkillIds.value.includes('memory'))
 // CLI 既可以由技能级别开启，也可以由任意 CLI 子工具开启；任一条件满足就认为 CLI 一级菜单处于启用态。
 const cliEnabled = computed(() => enabledSkillIds.value.includes('cli') || enabledCliIds.value.length > 0)
 // CLI 一级菜单右侧的小数字，告诉用户当前有几个 CLI 子工具会被注入。
-const enabledCliCount = computed(() => enabledCliIds.value.length)
-// 普通技能级联不再包含 CLI；CLI 有独立入口，避免出现“CLI CLI”的重复视觉。
-const installedSelectableSkills = computed(() => fullSkillCatalog.value.filter(skill => skill.group === 'skill' && !skill.mandatory))
+const enabledCliCount = computed(() => installedCliTools.value.length)
+// 胶囊菜单的三分组：命令行(cli)、技能(Claude skill:)、工具(其余=内置工具+MCP)。
+// 用 id 前缀判定，比 group 字段更细：group 只有 cli/skill，无法区分内置/MCP/Claude。
+const menuGroupOf = (item) => {
+  const id = String(item?.id || '')
+  if (id === 'cli' || id.startsWith('cli:') || item?.group === 'cli') return 'cli'
+  if (id.startsWith('skill:')) return 'skill'
+  return 'tool'
+}
+// 工具子菜单 = 后端已启用的内置工具 + MCP；技能子菜单 = 后端已启用的 Claude 技能。两者都与背包「我的」一致。
+const installedToolItems = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'tool').map(capabilityToMenuItem))
+const installedClaudeSkills = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'skill').map(capabilityToMenuItem))
+// 各分组数量徽标 = 对应子菜单条数（都是已启用项）。
+const enabledToolCount = computed(() => installedToolItems.value.length)
+const enabledClaudeSkillCount = computed(() => installedClaudeSkills.value.length)
 
 // 移动端检测
 const isMobileDevice = computed(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
@@ -517,15 +579,21 @@ const openResourceLibrary = () => {
 }
 // 从 localStorage 同步技能状态；商店弹窗保存后会发 skills-updated 事件，输入区靠这个函数刷新。
 const syncSkillState = () => {
-  enabledSkillIds.value = readJsonStorage('enabledSkills', ['time', 'math', 'memory'])
-  enabledSkillCount.value = Number(localStorage.getItem('enabledSkillCount') || enabledSkillIds.value.length)
-  enabledCliIds.value = readJsonStorage('enabledCliTools', ['cli'])
+  const storeItems = capabilityStore.sessionCapabilities.length ? capabilityStore.sessionCapabilities : capabilityStore.installed
+  if (storeItems.length > 0 && !capabilityStore.usingFallback) {
+    enabledSkillIds.value = storeItems.filter(item => item.enabled || item.mandatory).map(item => item.skillKey)
+    enabledCliIds.value = storeItems.filter(item => (item.enabled || item.mandatory) && item.kind === 'cli').map(item => item.skillKey)
+  } else {
+    enabledSkillIds.value = readJsonStorage('enabledSkills', ['time', 'math', 'memory'])
+    enabledCliIds.value = readJsonStorage('enabledCliTools', ['cli'])
+  }
+  enabledSkillCount.value = fullSkillCatalog.value.filter(skill => enabledSkillIds.value.includes(skill.id) && isUserVisibleCapability(skill)).length
   dynamicSkillMeta.value = readJsonStorage('enabledSkillMeta', {})
 }
 // 保存技能级开关；写完立即广播，确保胶囊栏、标题数字、商店列表都能同步。
 const persistSkillState = () => {
   localStorage.setItem('enabledSkills', JSON.stringify(enabledSkillIds.value))
-  localStorage.setItem('enabledSkillCount', String(enabledSkillIds.value.length))
+  localStorage.setItem('enabledSkillCount', String(fullSkillCatalog.value.filter(skill => enabledSkillIds.value.includes(skill.id) && isUserVisibleCapability(skill)).length))
   window.dispatchEvent(new Event('skills-updated'))
 }
 // 保存 CLI 子工具开关；CLI 子工具和技能级开关分开存，方便以后扩展更多命令行能力。
@@ -535,12 +603,37 @@ const persistCliState = () => {
 }
 // 判断某个技能是否已启用；模板里大量使用，抽成函数可以避免重复 includes 写法。
 const isSkillEnabled = (skillId) => enabledSkillIds.value.includes(skillId)
+// 悬停提示：直接读取菜单项上的启用时间（来自后端能力），显示「启用于 X」。
+const menuEnabledTitle = (item) => {
+  const at = item?.enabledAt
+  if (!at) return ''
+  const d = new Date(at)
+  return Number.isNaN(d.getTime()) ? '' : `启用于 ${d.toLocaleString()}`
+}
 // 判断某个 CLI 子工具是否已启用；和 isSkillEnabled 分开，避免把 CLI 子工具误当普通技能。
 const isCliEnabled = (cliId) => enabledCliIds.value.includes(cliId)
 // 胶囊栏标签右侧的删除按钮；必装技能不允许删除，保护时间/计算器这类基础能力。
-const removeSkillTag = (skillId) => {
+const currentSessionId = () => {
+  const id = chatStore.currentChatId
+  return typeof id === 'string' ? id : String(id || '')
+}
+
+const refreshCapabilitiesForCurrentSession = async () => {
+  await capabilityStore.fetchSession(currentSessionId())
+  syncSkillState()
+}
+
+const removeSkillTag = async (skillId) => {
   const mandatoryIds = new Set(fullSkillCatalog.value.filter(skill => skill.mandatory).map(skill => skill.id))
   if (mandatoryIds.has(skillId)) return
+  const sessionId = currentSessionId()
+  try {
+    await capabilityStore.toggleSessionSkill(sessionId, skillId, false)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('会话技能关闭接口不可用，使用本地缓存兜底:', error)
+  }
   enabledSkillIds.value = enabledSkillIds.value.filter(id => id !== skillId)
   if (dynamicSkillMeta.value[skillId]) {
     const nextMeta = { ...dynamicSkillMeta.value }
@@ -557,9 +650,17 @@ const removeSkillTag = (skillId) => {
   syncSkillState()
 }
 // 级联菜单中普通技能的开关逻辑；mandatory 技能直接返回，不给用户关闭入口。
-const toggleSkillById = (skillId) => {
+const toggleSkillById = async (skillId) => {
   const catalogSkill = fullSkillCatalog.value.find(skill => skill.id === skillId)
   if (catalogSkill?.mandatory) return
+  const nextEnabled = !enabledSkillIds.value.includes(skillId)
+  try {
+    await capabilityStore.toggleSessionSkill(currentSessionId(), skillId, nextEnabled)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('会话技能开关接口不可用，使用本地缓存兜底:', error)
+  }
   const next = new Set(enabledSkillIds.value)
   if (next.has(skillId)) next.delete(skillId)
   else next.add(skillId)
@@ -575,7 +676,15 @@ const toggleSkillById = (skillId) => {
   persistSkillState()
 }
 // CLI 子工具开关；只要还有任意 CLI 子工具开启，就把技能级 cli 放入 enabledSkills。
-const toggleCliTool = (cliId) => {
+const toggleCliTool = async (cliId) => {
+  const nextEnabled = !enabledCliIds.value.includes(cliId)
+  try {
+    await capabilityStore.toggleSessionSkill(currentSessionId(), cliId, nextEnabled)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('CLI 会话开关接口不可用，使用本地缓存兜底:', error)
+  }
   const next = new Set(enabledCliIds.value)
   if (next.has(cliId)) next.delete(cliId)
   else next.add(cliId)
@@ -753,7 +862,10 @@ function handleClickOutside(e) {
   }
 }
 onMounted(() => {
-  syncSkillState()
+  refreshCapabilitiesForCurrentSession().catch((error) => {
+    console.warn('能力状态接口不可用，使用本地缓存兜底:', error)
+    syncSkillState()
+  })
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('storage', syncSkillState)
   window.addEventListener('skills-updated', syncSkillState)
@@ -763,6 +875,13 @@ onUnmounted(() => {
   window.removeEventListener('storage', syncSkillState)
   window.removeEventListener('skills-updated', syncSkillState)
   attachedFiles.value.forEach(f => f.closeSSE?.())
+})
+
+watch(() => chatStore.currentChatId, () => {
+  refreshCapabilitiesForCurrentSession().catch((error) => {
+    console.warn('切换会话后能力状态刷新失败，使用本地缓存兜底:', error)
+    syncSkillState()
+  })
 })
 
 // 文件处理
@@ -1511,6 +1630,24 @@ const autoResize = (e) => {
   display: block;
 }
 
+/* 透明“悬停桥”：把它放在“行”上而不是二级面板上。
+   二级面板有 overflow-y:auto，会连带把 overflow-x 变成 auto，从而裁掉放在面板负偏移处的桥；
+   而行没有 overflow 裁剪，所以这里用 .has-submenu::after 覆盖行与面板之间的间隙，
+   光标从行平移到面板时始终停留在 .has-submenu 的 hover 区域内，面板不再消失。 */
+.has-submenu::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 18px;
+  display: none;
+}
+
+.has-submenu:hover::after {
+  display: block;
+}
+
 .submenu-head {
   display: flex;
   align-items: baseline;
@@ -1617,6 +1754,13 @@ const autoResize = (e) => {
 .cascade-item.active .cascade-state {
   background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   color: #fff;
+}
+
+.cascade-empty {
+  padding: 14px 6px;
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 12px;
 }
 
 .cascade-manage {

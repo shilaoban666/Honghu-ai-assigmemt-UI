@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#7f7b73"/></marker>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.node{rx:10;stroke-width:1.5}.blue{fill:#e8f3ff;stroke:#6aa3df}.green{fill:#dff4ee;stroke:#4ba993}.purple{fill:#eeeaff;stroke:#8b80e8}.orange{fill:#fff1dc;stroke:#d9963a}.label{font:700 16px "Microsoft YaHei",Arial,sans-serif;fill:#333}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#4f4b45}.mono{font:500 12px Consolas,monospace;fill:#555}.line{stroke:#7f7b73;stroke-width:1.5;fill:none;marker-end:url(#arrow)}.warn{fill:#fff1dc;stroke:#d9963a;stroke-width:1.5;rx:10}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="680"/>
+  <text x="60" y="58" class="title">会话级启用/关闭流程</text>
+
+  <rect x="70" y="130" width="245" height="110" class="node blue"/>
+  <text x="192" y="168" text-anchor="middle" class="label">输入区 / 技能弹窗</text>
+  <text x="192" y="196" text-anchor="middle" class="small">点击 + / ✓ / 删除标签</text>
+  <text x="192" y="218" text-anchor="middle" class="mono">toggleSessionSkill()</text>
+
+  <rect x="405" y="130" width="245" height="110" class="node purple"/>
+  <text x="527" y="168" text-anchor="middle" class="label">PUT 会话开关</text>
+  <text x="527" y="196" text-anchor="middle" class="small">/sessions/{sid}/skills/{key}</text>
+  <text x="527" y="218" text-anchor="middle" class="mono">{ enabled: true|false }</text>
+
+  <rect x="740" y="130" width="245" height="110" class="node green"/>
+  <text x="862" y="168" text-anchor="middle" class="label">session_skill_setting</text>
+  <text x="862" y="196" text-anchor="middle" class="small">保存显式覆盖</text>
+  <text x="862" y="218" text-anchor="middle" class="mono">session_id + skill_id</text>
+
+  <rect x="245" y="370" width="255" height="115" class="node orange"/>
+  <text x="372" y="407" text-anchor="middle" class="label">SkillResolverService</text>
+  <text x="372" y="435" text-anchor="middle" class="small">计算 effectiveEnabledIds</text>
+  <text x="372" y="459" text-anchor="middle" class="mono">mandatory + default + install + override</text>
+
+  <rect x="615" y="370" width="255" height="115" class="node purple"/>
+  <text x="742" y="407" text-anchor="middle" class="label">下一次聊天请求</text>
+  <text x="742" y="435" text-anchor="middle" class="small">只注入启用能力</text>
+  <text x="742" y="459" text-anchor="middle" class="mono">tool callbacks / prompts</text>
+
+  <rect x="120" y="550" width="960" height="72" class="warn"/>
+  <text x="600" y="582" text-anchor="middle" class="label">重要边界</text>
+  <text x="600" y="607" text-anchor="middle" class="small">会话开关只改变“是否注入当前会话”，不会自动启动 MCP、执行 CLI 或安装系统依赖。</text>
+
+  <path class="line" d="M315 185h90"/>
+  <path class="line" d="M650 185h90"/>
+  <path class="line" d="M862 240v80H372v50"/>
+  <path class="line" d="M500 427h115"/>
+</svg>

@@ -27,15 +27,27 @@
 
     <section class="market-main">
       <header class="market-header">
-        <div class="header-copy">
-          <span class="eyebrow">{{ storeCopy.eyebrow }}</span>
-          <h1>{{ storeCopy.title }}</h1>
-          <p>{{ storeCopy.description }}</p>
+        <div class="header-lead">
+          <button class="market-back" type="button" title="返回" @click="goBack">
+            <ArrowLeft :size="18" />
+            <span>返回</span>
+          </button>
+          <div class="header-copy">
+            <span class="eyebrow">{{ storeCopy.eyebrow }}</span>
+            <h1>{{ storeCopy.title }}</h1>
+            <p>{{ storeCopy.description }}</p>
+          </div>
         </div>
-        <button class="back-btn" type="button" @click="goBack">
-          <X :size="18" />
-          <span>关闭</span>
-        </button>
+        <div class="header-actions">
+          <button class="manage-btn" type="button" @click="goManage">
+            <SlidersHorizontal :size="16" />
+            <span>技能管理</span>
+          </button>
+          <button class="back-btn" type="button" @click="goBack">
+            <X :size="18" />
+            <span>关闭</span>
+          </button>
+        </div>
       </header>
 
       <div class="market-status">
@@ -109,6 +121,7 @@
             class="connector-card"
             :class="{ installed: isInstalled(connector.id), unhealthy: connector.health !== 'healthy' }"
             :style="{ '--card-index': index }"
+            :title="isInstalled(connector.id) ? '已加入我的商店' : '点击查看详情，右侧 + 可加入我的商店'"
             @click="openDetail(connector)"
           >
             <div class="connector-head">
@@ -137,6 +150,7 @@
                 :class="{ enabled: isInstalled(connector.id) }"
                 :disabled="isPending(connector.id)"
                 type="button"
+                :title="isInstalled(connector.id) ? '已加入我的商店，点击移除' : '加入我的商店'"
                 @click.stop="toggleInstall(connector)"
               >
                 <LoaderCircle v-if="isPending(connector.id)" :size="15" class="spin" />
@@ -222,6 +236,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  ArrowLeft,
   Check,
   Database,
   LoaderCircle,
@@ -229,21 +244,17 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Star,
   Unlock,
   Wrench,
   X
 } from '@lucide/vue'
-import { fetchMcpMarketplace, installMcpSkill } from '@/api/mcpMarketplace'
-import {
-  generatedMcpServers,
-  mcpCategories,
-  persistInstalledMcpIds,
-  readInstalledMcpIds
-} from '@/data/mcpMarketplace'
+import { useCapabilityStore } from '@/stores/capabilityStore'
 
 const router = useRouter()
 const route = useRoute()
+const capabilityStore = useCapabilityStore()
 
 // 左侧分类 key。all 表示不过滤，security/prompts/resources 等会传给后端做分页筛选。
 const activeCategory = ref('all')
@@ -260,7 +271,7 @@ const remoteServers = ref([])
 // 后端返回的分类统计，用于左侧导航；后端不可用时会自动切换成本地统计。
 const remoteCategories = ref([])
 // 当前筛选条件下的后端总数。
-const remoteTotal = ref(generatedMcpServers.length)
+const remoteTotal = ref(0)
 // 后端是否还有下一页。
 const remoteHasMore = ref(true)
 // 当前要请求的页码，从 0 开始。
@@ -284,8 +295,180 @@ const pendingInstallIds = ref(new Set())
 const scrollPanelRef = ref(null)
 const searchDebounceTimer = ref(null)
 
+const routeKind = (type = storeType.value) => type === 'skills' ? 'skill' : type
+
 const PAGE_SIZE = 24
 const QUICK_FILTER_KEYS = ['all', 'no-auth', 'healthy', 'tools', 'resources', 'prompts']
+
+const fallbackCatalog = {
+  mcp: [
+    {
+      id: 'mcp:github',
+      kind: 'mcp',
+      name: 'GitHub MCP',
+      category: 'developer',
+      endpoint: 'https://github.com/modelcontextprotocol/servers',
+      description: 'Fallback MCP entry for repository, issue and pull request workflows.',
+      metadata: { authType: 'apiKey', health: 'unknown', toolCount: 6 },
+      downloads: 0,
+      rating: 4.7,
+      verified: false,
+      source: 'MCP'
+    },
+    {
+      id: 'mcp:tavily',
+      kind: 'mcp',
+      name: 'Tavily Search MCP',
+      category: 'search',
+      endpoint: 'https://tavily.com',
+      description: 'Fallback MCP entry for web search and extraction workflows.',
+      metadata: { authType: 'apiKey', health: 'unknown', toolCount: 3 },
+      downloads: 0,
+      rating: 4.6,
+      verified: false,
+      source: 'MCP'
+    }
+  ],
+  skills: [
+    {
+      id: 'skill:document-writer',
+      skillKey: 'skill:document-writer',
+      kind: 'skill',
+      name: 'Document Writer Skill',
+      category: 'writing',
+      description: 'Fallback skill for drafting, rewriting and document structuring.',
+      metadata: { runtime: 'prompt', teaches: 'Drafting and document structuring', toolCount: 0 },
+      downloads: 0,
+      rating: 4.6,
+      verified: false,
+      source: 'CLAUDE_SKILL'
+    },
+    {
+      id: 'skill:data-analysis',
+      skillKey: 'skill:data-analysis',
+      kind: 'skill',
+      name: 'Data Analysis Skill',
+      category: 'analysis',
+      description: 'Fallback skill for table reasoning, metric explanation and summaries.',
+      metadata: { runtime: 'prompt', teaches: 'Lightweight analysis and summaries', toolCount: 0 },
+      downloads: 0,
+      rating: 4.7,
+      verified: false,
+      source: 'CLAUDE_SKILL'
+    }
+  ],
+  cli: [
+    {
+      id: 'cli:git',
+      skillKey: 'cli:git',
+      kind: 'cli',
+      name: 'Git CLI',
+      category: 'developer',
+      description: 'Fallback CLI entry for controlled Git status and diff workflows.',
+      metadata: { command: 'git', sandboxed: true, toolCount: 1 },
+      downloads: 0,
+      rating: 4.8,
+      verified: false,
+      source: 'CLI'
+    },
+    {
+      id: 'cli:npm',
+      skillKey: 'cli:npm',
+      kind: 'cli',
+      name: 'npm scripts',
+      category: 'developer',
+      description: 'Fallback CLI entry for listing and running npm scripts.',
+      metadata: { command: 'npm', sandboxed: true, toolCount: 1 },
+      downloads: 0,
+      rating: 4.6,
+      verified: false,
+      source: 'CLI'
+    }
+  ]
+}
+
+function readInstalledMcpIds() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('enabledSkills') || '["time","math","memory"]')
+    return new Set(Array.isArray(parsed) ? parsed : ['time', 'math', 'memory'])
+  } catch {
+    return new Set(['time', 'math', 'memory'])
+  }
+}
+
+function inferAbilityMeta(item = {}) {
+  const id = String(item.id || '')
+  if (id === 'cli' || id.startsWith('cli:')) {
+    return {
+      icon: item.icon || 'CLI',
+      group: 'cli',
+      source: 'CLI',
+      menuDesc: item.categoryLabel || item.description || 'Global CLI capability'
+    }
+  }
+  if (id.startsWith('skill:')) {
+    return {
+      icon: item.icon || 'Skill',
+      group: 'skill',
+      source: 'SKILL',
+      menuDesc: item.categoryLabel || item.description || 'Global Skill capability'
+    }
+  }
+  return {
+    icon: item.icon || 'MCP',
+    group: 'skill',
+    source: 'MCP',
+    menuDesc: item.categoryLabel || item.description || 'Global MCP capability'
+  }
+}
+
+function persistInstalledMcpIds(ids, installedItems = []) {
+  const values = Array.from(ids)
+  localStorage.setItem('enabledSkills', JSON.stringify(values))
+  localStorage.setItem('enabledSkillCount', String(values.length))
+
+  try {
+    const oldMeta = JSON.parse(localStorage.getItem('enabledSkillMeta') || '{}')
+    const nextMeta = { ...(oldMeta && typeof oldMeta === 'object' ? oldMeta : {}) }
+    installedItems.forEach((item) => {
+      if (!item?.id) return
+      const inferred = inferAbilityMeta(item)
+      nextMeta[item.id] = {
+        id: item.id,
+        name: item.name || item.id,
+        icon: inferred.icon,
+        group: inferred.group,
+        menuDesc: inferred.menuDesc,
+        source: inferred.source
+      }
+    })
+    Object.keys(nextMeta).forEach((id) => {
+      if (!values.includes(id)) delete nextMeta[id]
+    })
+    localStorage.setItem('enabledSkillMeta', JSON.stringify(nextMeta))
+  } catch {
+    localStorage.setItem('enabledSkillMeta', '{}')
+  }
+
+  const touchedCliIds = installedItems
+    .map(item => String(item?.id || ''))
+    .filter(id => id === 'cli' || id.startsWith('cli:'))
+  if (touchedCliIds.length > 0) {
+    try {
+      const oldCli = JSON.parse(localStorage.getItem('enabledCliTools') || '[]')
+      const nextCli = new Set(Array.isArray(oldCli) ? oldCli : [])
+      touchedCliIds.forEach((id) => {
+        if (values.includes(id)) nextCli.add(id)
+        else nextCli.delete(id)
+      })
+      localStorage.setItem('enabledCliTools', JSON.stringify(Array.from(nextCli)))
+    } catch {
+      localStorage.setItem('enabledCliTools', JSON.stringify(touchedCliIds.filter(id => values.includes(id))))
+    }
+  }
+
+  window.dispatchEvent(new Event('skills-updated'))
+}
 
 // 设置页有“全网 MCP / Skills / CLI”三个入口。详细页复用同一套高性能列表和懒加载逻辑，
 // 这里用路由 query 的 type 决定文案、id 前缀和安装配置，避免为了三种商店复制三份大组件。
@@ -343,7 +526,7 @@ const initialLoading = computed(() => loading.value && !initialLoaded.value)
 
 const totalCountText = computed(() => {
   const allCategory = categoryView.value.find(category => category.key === 'all')
-  return formatNumber(allCategory?.visibleCount || generatedMcpServers.length)
+  return formatNumber(allCategory?.visibleCount || displayTotal.value || remoteTotal.value)
 })
 
 const activeCategoryLabel = computed(() => {
@@ -362,8 +545,7 @@ const categoryView = computed(() => {
 })
 
 const localCategoryView = computed(() => {
-  const counts = generatedMcpServers.reduce((acc, rawServer) => {
-    const server = normalizeServer(rawServer)
+  const counts = fallbackServers.value.reduce((acc, server) => {
     acc.all += 1
     acc[server.category] = (acc[server.category] || 0) + 1
     if (server.auth === 'No Auth') acc['no-auth'] = (acc['no-auth'] || 0) + 1
@@ -374,17 +556,26 @@ const localCategoryView = computed(() => {
     return acc
   }, { all: 0 })
 
-  return mcpCategories.map(category => ({
-    ...category,
-    visibleCount: counts[category.key] ?? category.count ?? 0
-  }))
+  const categoryKeys = ['all', ...new Set(fallbackServers.value.map(server => server.category)), 'no-auth', 'healthy', 'tools', 'resources', 'prompts']
+  return categoryKeys
+    .filter((key, index, list) => list.indexOf(key) === index)
+    .filter(key => counts[key] || key === 'all')
+    .map(key => ({
+      key,
+      label: key === 'all' ? 'All' : key,
+      icon: key === 'all' ? storeCopy.value.sidebarMark : key.slice(0, 2).toUpperCase(),
+      visibleCount: counts[key] ?? 0
+    }))
+})
+
+const fallbackServers = computed(() => {
+  const source = fallbackCatalog[storeType.value] || fallbackCatalog.mcp
+  return source.map(normalizeServer).filter(server => server.id)
 })
 
 const localFilteredServers = computed(() => {
   const q = searchText.value.toLowerCase()
-  const list = generatedMcpServers
-    .map(normalizeServer)
-    .filter(server => server.id)
+  const list = fallbackServers.value
     .filter(server => matchCategory(server, activeCategory.value))
     .filter(server => !onlyHealthy.value || server.health === 'healthy')
     .filter(server => !onlyNoAuth.value || server.auth === 'No Auth')
@@ -413,10 +604,36 @@ const displayHasMore = computed(() => {
  * 把后端、本地种子、未来爬虫数据统一整理成页面可直接渲染的安全对象。
  *
  * 这里做了两类兼容：
- * 1. 对后端缺字段的 MCP 元数据做空值兜底，避免 Vue 模板读取时报错；
- * 2. 根据当前商店类型改写 id / 名称 / endpoint 文案，让同一份 1000+ 目录可以支撑 MCP、Skills、CLI 三种详细商店预览。
+ * 1. 后端 CapabilityDto 已经是主路径，直接按 kind/metadata 映射成页面卡片字段；
+ * 2. 本地 fallback 只在后端不可用时使用，并且每个 kind 只有少量开发兜底项；
+ * 3. 不再把一批 MCP 假数据通过文字替换伪造成 Skills/CLI，避免用户误以为三类目录都已真实同步。
  */
 const normalizeServer = (server = {}) => {
+  if (server.skillKey || server.kind) {
+    const kind = server.kind || routeKind()
+    const metadata = server.metadata || {}
+    const toolCount = Number(metadata.toolCount ?? server.toolNames?.length ?? 0)
+    return {
+      id: server.skillKey || server.id,
+      name: server.name || server.skillKey || server.id || 'Unnamed capability',
+      grade: server.verified ? 'A' : 'B',
+      category: String(server.category || 'general'),
+      categoryLabel: String(server.category || 'general'),
+      endpoint: String(metadata.endpoint || metadata.command || server.slug || ''),
+      description: String(server.description || metadata.teaches || '该能力暂未提供详细说明。'),
+      auth: metadata.authType === 'none' ? 'No Auth' : String(metadata.authType || 'API Key'),
+      health: String(metadata.health || 'healthy'),
+      tools: toolCount,
+      resources: Number(metadata.resourceCount || 0),
+      prompts: Number(metadata.promptCount || 0),
+      downloads: Number(server.downloads || 0),
+      rating: Number(server.rating || 0),
+      tags: [kind, server.origin, server.source, server.category].filter(Boolean).map(String),
+      updated: String(server.version || '已同步'),
+      verified: Boolean(server.verified || kind === 'builtin'),
+      icon: server.icon || (kind === 'cli' ? 'CLI' : kind === 'mcp' ? 'MCP' : '技')
+    }
+  }
   const rawId = String(server.id || '')
   const baseId = rawId.replace(/^(mcp|skill|cli):/, '')
   const baseName = String(server.name || 'Unnamed MCP')
@@ -562,6 +779,14 @@ const toggleInstall = async (connector) => {
   if (next.has(item.id)) {
     next.delete(item.id)
     installedIds.value = next
+    setPending(item.id, true)
+    try {
+      await capabilityStore.uninstall(item.id)
+    } catch (error) {
+      console.warn('Capability uninstall API unavailable, updated local state first:', error)
+    } finally {
+      setPending(item.id, false)
+    }
     persistInstalledMcpIds(next, [item])
     storeNotice.value = `${item.name} 已从当前会话技能中移除。`
     return
@@ -573,18 +798,14 @@ const toggleInstall = async (connector) => {
   setPending(item.id, true)
 
   try {
-    // 当前后端只实现了 MCP 安装落库；Skills/CLI 详细商店先写入本地会话状态，
-    // 等后端补齐对应安装 API 后，可以在这里按 storeType 分发到不同接口。
-    if (storeType.value === 'mcp') {
-      await installMcpSkill(item.id, {
+    await capabilityStore.install(item.id, {
+      config: {
         endpoint: item.endpoint,
         auth: item.auth,
-        source: 'global-mcp-marketplace'
-      })
-      storeNotice.value = `${item.name} 已安装，并已同步到后端技能体系。`
-    } else {
-      storeNotice.value = `${item.name} 已加入本地会话；后端 ${storeType.value === 'cli' ? 'CLI' : 'Skills'} 安装接口接通后会同步落库。`
-    }
+        source: `global-${routeKind()}-marketplace`
+      }
+    })
+    storeNotice.value = `${item.name} 已安装，并已同步到后端能力体系。`
   } catch (error) {
     console.warn('全网商店安装接口暂不可用，已先写入本地会话技能:', error)
     storeNotice.value = `${item.name} 已先加入本地会话；后端连通后会写入 skill/user_skill_install。`
@@ -606,22 +827,9 @@ const loadRemotePage = async (reset = false) => {
     remoteHasMore.value = true
   }
 
-  // Skills / CLI 商店目前使用前端 1000+ 本地目录预览，避免误调用 MCP 专属后端安装/分页接口。
-  // 后续后端补齐 /skills-marketplace 和 /cli-marketplace 后，只需要替换这里的分支即可。
-  if (storeType.value !== 'mcp') {
-    usingLocalFallback.value = true
-    localVisibleCount.value = PAGE_SIZE
-    remoteServers.value = []
-    remoteHasMore.value = false
-    remoteTotal.value = localFilteredServers.value.length
-    storeNotice.value = `当前展示本地 1000+ ${storeCopy.value.itemName} 目录兜底数据。`
-    initialLoaded.value = true
-    return
-  }
-
   loading.value = true
   try {
-    const payload = await fetchMcpMarketplace({
+    const payload = await capabilityStore.fetchMarketplace(routeKind(), {
       category: activeCategory.value,
       q: searchText.value,
       healthyOnly: onlyHealthy.value,
@@ -643,10 +851,10 @@ const loadRemotePage = async (reset = false) => {
     usingLocalFallback.value = false
     storeNotice.value = ''
   } catch (error) {
-    console.warn('全网 MCP 商店接口不可用，切换到本地兜底目录:', error)
+    console.warn('统一能力商店接口不可用，切换到本地兜底目录:', error)
     usingLocalFallback.value = true
     localVisibleCount.value = PAGE_SIZE
-    storeNotice.value = '后端商店接口暂未连接，当前展示本地 1000+ MCP 目录兜底数据。'
+    storeNotice.value = `后端能力商店接口暂未连接，当前展示本地 ${storeCopy.value.itemName} 目录兜底数据。`
   } finally {
     loading.value = false
     initialLoaded.value = true
@@ -689,6 +897,11 @@ const goBack = () => {
   else router.push('/')
 }
 
+// 从商店进入“详细技能管理”页面（设置 -> 智能体 -> 技能管理）。
+const goManage = () => {
+  router.push('/settings/agent/skills')
+}
+
 watch([activeCategory, onlyHealthy, onlyNoAuth, sortBy], resetAndLoad)
 
 watch(storeType, () => {
@@ -697,7 +910,7 @@ watch(storeType, () => {
   onlyHealthy.value = false
   onlyNoAuth.value = false
   sortBy.value = 'popular'
-  usingLocalFallback.value = storeType.value !== 'mcp'
+  usingLocalFallback.value = false
   initialLoaded.value = false
   // query 参数在同一个组件实例内变化时，Vue Router 不会重新挂载页面；
   // 这里主动重置并加载，保证从 MCP 切到 Skills/CLI 时标题、列表和安装状态都同步更新。
@@ -868,6 +1081,37 @@ onBeforeUnmount(() => {
   animation: headerIn .34s cubic-bezier(.16, 1, .3, 1) both;
 }
 
+.header-lead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* 左上角返回按钮：圆形主色描边，和右侧“关闭”区分主次。 */
+.market-back {
+  flex-shrink: 0;
+  height: 38px;
+  margin-top: 2px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 9%, var(--bg-primary));
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.market-back:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--bg-primary));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary-color) 16%, transparent);
+}
+
 .eyebrow {
   color: var(--primary-color);
   font-size: 11px;
@@ -914,6 +1158,36 @@ onBeforeUnmount(() => {
 .icon-close:hover {
   color: var(--primary-color);
   background: var(--hover-bg);
+}
+
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* “技能管理”入口：主色描边强调，与“关闭”形成主次区分。 */
+.manage-btn {
+  height: 38px;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-primary));
+  color: var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.manage-btn:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary-color) 16%, var(--bg-primary));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary-color) 18%, transparent);
 }
 
 .market-status {

@@ -8,12 +8,18 @@
               <header class="store-header">
                 <div class="header-copy">
                   <span class="eyebrow">Skill Hub</span>
-                  <h2>技能商店</h2>
+                  <h2>背包</h2>
                   <p>探索不同的技能     为AI加上专业经验和配备专业工具</p>
                 </div>
-                <button class="icon-btn" @click="$emit('close')" title="关闭">
-                  <X size="18" />
-                </button>
+                <div class="store-header-actions">
+                  <button class="manage-link" type="button" @click="goManage">
+                    <SlidersHorizontal size="16" />
+                    <span>去商店填加技能</span>
+                  </button>
+                  <button class="icon-btn" @click="$emit('close')" title="关闭">
+                    <X size="18" />
+                  </button>
+                </div>
               </header>
 
               <div class="store-control-row">
@@ -61,6 +67,7 @@
                     class="skill-row"
                     :class="{ active: isEnabled(skill), mandatory: skill.mandatory }"
                     :style="{ '--row-index': index }"
+                    :title="enabledTitle(skill)"
                     @click="openDetail(skill)"
                   >
                     <div class="skill-icon" :style="{ '--accent': skill.accent }">
@@ -87,8 +94,7 @@
                     >
                       <Lock v-if="skill.mandatory" size="15" />
                       <Check v-else-if="isEnabled(skill)" size="16" />
-                      <Plus v-else-if="skill.source !== 'MCP'" size="16" />
-                      <span v-else>连接</span>
+                      <span v-else>启用</span>
                     </button>
                   </article>
 
@@ -192,6 +198,8 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useChat } from '@/stores/chatStore'
+import { useCapabilityStore } from '@/stores/capabilityStore'
 import {
   Check,
   ChevronLeft,
@@ -200,16 +208,27 @@ import {
   Plus,
   Search,
   Sparkles,
+  SlidersHorizontal,
   Star,
   Upload,
   Wrench,
   X
 } from '@lucide/vue'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   visible: { type: Boolean, default: false }
 })
 const emit = defineEmits(['close'])
+const router = useRouter()
+
+// 从技能商店弹窗进入“详细技能管理”页面：先关闭弹窗，再跳转设置页对应路由。
+const goManage = () => {
+  emit('close')
+  router.push('/settings/agent/skills')
+}
+const chatStore = useChat()
+const capabilityStore = useCapabilityStore()
 
 // 当前商店处在哪个一级 Tab；默认展示“内置”，因为用户打开商店时最常用的是查看已内置能力。
 const activeTab = ref('builtin')
@@ -224,8 +243,10 @@ const enabledSkills = ref(new Set(JSON.parse(localStorage.getItem('enabledSkills
 
 // 一级 Tab 配置；key 对应过滤逻辑，label 是直接展示给用户看的文本。
 const tabs = [
-  { key: 'builtin', label: '内置' },
-  { key: 'mcp', label: 'MCP 市场' },
+  { key: 'builtin', label: '内置工具' },
+  { key: 'mcp', label: 'MCP' },
+  { key: 'skill', label: '技能' },
+  { key: 'cli', label: '命令行' },
   { key: 'mine', label: '我的' },
   { key: 'custom', label: '自定义' }
 ]
@@ -509,6 +530,54 @@ const toolDescriptions = {
   gitStatus: '读取 Git 状态与差异摘要'
 }
 
+const currentSessionId = () => {
+  const id = chatStore.currentChatId
+  return typeof id === 'string' ? id : String(id || '')
+}
+
+// 轻量弹窗沿用了早期的本地 skillData 展示模型。这里把后端 CapabilityDto
+// 映射回弹窗需要的字段，避免模板层同时理解两套数据结构。
+// 运行时状态仍以后端 sessionCapabilities 为准；只有后端不可用时才退回本地 skillData。
+const capabilityToSkill = (capability) => ({
+  id: capability.skillKey,
+  tab: capability.kind === 'mcp' ? 'mcp' : capability.kind === 'builtin' ? 'builtin' : capability.kind,
+  icon: capability.icon || (capability.kind === 'mcp' ? 'MCP' : capability.kind === 'cli' ? '>_' : '技'),
+  accent: capability.accent || '#e4efff',
+  name: capability.name || capability.skillKey,
+  description: capability.description || '',
+  longDescription: capability.description || '',
+  source: capability.source || capability.kind.toUpperCase(),
+  sourceLabel: capability.kind === 'mcp' ? 'MCP' : capability.kind === 'cli' ? 'CLI' : capability.kind === 'builtin' ? '内置' : 'Skill',
+  category: capability.category || '通用',
+  runtime: capability.metadata?.runtime || capability.metadata?.transport || 'System',
+  license: capability.metadata?.license || '内置',
+  mandatory: capability.mandatory,
+  defaultEnabled: capability.defaultEnabled,
+  rating: capability.rating,
+  downloads: capability.downloads,
+  tools: capability.toolNames?.length || capability.metadata?.toolCount || 0,
+  grade: capability.verified ? 'A' : 'B',
+  version: capability.version || 'v1',
+  author: capability.publisher || 'System',
+  updated: capability.installed ? '已安装' : '可安装',
+  installed: Boolean(capability.installed),
+  enabled: Boolean(capability.enabled),
+  enabledAt: capability.enabledAt || null,
+  toolNames: capability.toolNames || [],
+  highlights: [capability.description || '已同步到后端能力体系'].filter(Boolean)
+})
+
+const serverSkillData = computed(() => {
+  const items = capabilityStore.sessionCapabilities.length
+    ? capabilityStore.sessionCapabilities
+    : capabilityStore.installed
+  return items.map(capabilityToSkill)
+})
+
+const displaySkillData = computed(() => serverSkillData.value.length > 0 && !capabilityStore.usingFallback
+  ? serverSkillData.value
+  : skillData)
+
 // 搜索占位符跟随当前 Tab 切换；MCP 市场用户更关心 Server 名称，内置技能用户更关心能力关键词。
 const searchPlaceholder = computed(() => activeTab.value === 'mcp' ? '搜索 MCP Server 或关键词...' : '搜索技能名称、能力或关键词...')
 // 详情页右上角按钮文案；统一处理“必装锁定 / 已启用 / MCP 连接 / 普通添加”四种状态。
@@ -516,7 +585,7 @@ const detailActionText = computed(() => {
   if (!detailSkill.value) return ''
   if (detailSkill.value.mandatory) return '已锁定'
   if (isEnabled(detailSkill.value)) return '已启用'
-  return detailSkill.value.source === 'MCP' ? '连接' : '添加'
+  return '启用'
 })
 
 // 切换一级 Tab 时，同时退出详情页，确保用户看到的是新 Tab 对应的技能列表。
@@ -527,16 +596,17 @@ const setActiveTab = (tabKey) => {
 
 // 计算每个 Tab 的数量徽标；“我的”不是固定来源，而是当前已启用技能的动态集合。
 const countForTab = (tabKey) => {
-  if (tabKey === 'mine') return skillData.filter(skill => isEnabled(skill)).length
+  // “我的”展示当前用户已安装或已启用的能力（包含在全网商店安装、但本会话未开启的）。
+  if (tabKey === 'mine') return displaySkillData.value.filter(skill => isEnabled(skill)).length
   if (tabKey === 'custom') return 0
-  return skillData.filter(skill => skill.tab === tabKey).length
+  return displaySkillData.value.filter(skill => skill.tab === tabKey).length
 }
 
 // 根据当前 Tab 和搜索词得出最终展示列表。
 // 这里先做 tabMatch，再做搜索匹配，是为了减少无关技能参与关键词扫描。
 const filteredSkills = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return skillData.filter(skill => {
+  return displaySkillData.value.filter(skill => {
     const tabMatch = activeTab.value === 'mine'
       ? isEnabled(skill)
       : skill.tab === activeTab.value
@@ -553,8 +623,16 @@ const filteredSkills = computed(() => {
   })
 })
 
-// 必装技能视为永远启用；非必装技能则看 localStorage 同步出来的 enabledSkills 集合。
-const isEnabled = (skill) => skill.mandatory || enabledSkills.value.has(skill.id)
+// 是否“已启用”：必装恒为启用；优先用后端返回的 enabled 标志（无会话时也准确），
+// 再叠加本地乐观集合 enabledSkills（用户刚点开关、后端还没回包时也能立刻反映）。
+const isEnabled = (skill) => skill.mandatory || skill.enabled === true || enabledSkills.value.has(skill.id)
+
+// 悬停提示：已启用且有启用时间时显示「启用于 X」。
+const enabledTitle = (skill) => {
+  if (!isEnabled(skill) || !skill.enabledAt) return ''
+  const d = new Date(skill.enabledAt)
+  return Number.isNaN(d.getTime()) ? '已启用' : `启用于 ${d.toLocaleString()}`
+}
 
 // 把技能启用状态写回 localStorage，并广播给 InputArea.vue 的胶囊栏和级联菜单同步刷新。
 const persistSkills = () => {
@@ -573,8 +651,16 @@ const persistSkills = () => {
 }
 
 // 点击列表右侧按钮时切换技能启用状态；mandatory 技能不能关闭，所以直接返回。
-const toggleSkill = (skill) => {
+const toggleSkill = async (skill) => {
   if (skill.mandatory) return
+  const nextEnabled = !enabledSkills.value.has(skill.id)
+  try {
+    await capabilityStore.toggleSessionSkill(currentSessionId(), skill.id, nextEnabled)
+    enabledSkills.value = new Set(capabilityStore.enabledSkillIds)
+    return
+  } catch (error) {
+    console.warn('技能商店会话开关接口不可用，使用本地缓存兜底:', error)
+  }
   const next = new Set(enabledSkills.value)
   if (next.has(skill.id)) next.delete(skill.id)
   else next.add(skill.id)
@@ -595,7 +681,14 @@ watch(() => props.visible, (visible) => {
     detailTab.value = 'overview'
     detailSkill.value = null
     search.value = ''
-    enabledSkills.value = new Set(JSON.parse(localStorage.getItem('enabledSkills') || '["time","math","kb","memory","cli"]'))
+    capabilityStore.fetchSession(currentSessionId())
+      .then(() => {
+        enabledSkills.value = new Set(capabilityStore.enabledSkillIds)
+      })
+      .catch((error) => {
+        console.warn('技能商店能力状态接口不可用，使用本地缓存兜底:', error)
+        enabledSkills.value = new Set(JSON.parse(localStorage.getItem('enabledSkills') || '["time","math","kb","memory","cli"]'))
+      })
   }
 })
 </script>
@@ -703,6 +796,36 @@ watch(() => props.visible, (visible) => {
 .icon-btn:hover {
   background: var(--hover-bg-medium);
   color: var(--primary-color);
+}
+
+.store-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 弹窗内的“技能管理”入口：主色描边，引导用户进入更完整的详细管理页。 */
+.manage-link {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  color: var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 13px;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.manage-link:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary-color) 18%, transparent);
 }
 
 .store-control-row {

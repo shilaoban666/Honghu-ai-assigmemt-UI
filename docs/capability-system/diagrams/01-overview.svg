@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#7f7b73"/></marker>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.note{font:500 14px "Microsoft YaHei",Arial,sans-serif;fill:#6c6861}.node{rx:10;stroke-width:1.5}.blue{fill:#e8f3ff;stroke:#6aa3df}.green{fill:#dff4ee;stroke:#4ba993}.purple{fill:#eeeaff;stroke:#8b80e8}.orange{fill:#fff1dc;stroke:#d9963a}.neutral{fill:#f7f5ef;stroke:#aaa69d}.label{font:700 17px "Microsoft YaHei",Arial,sans-serif;fill:#333}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#4f4b45}.mono{font:500 12px Consolas,monospace;fill:#555}.line{stroke:#7f7b73;stroke-width:1.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="680"/>
+  <text x="60" y="58" class="title">统一能力系统总览</text>
+  <text x="60" y="86" class="note">前端统一消费 CapabilityDto；后端复用 skill / user_skill_install / session_skill_setting，不新建平行 capability 主表。</text>
+
+  <rect x="70" y="140" width="210" height="95" class="node blue"/>
+  <text x="175" y="177" text-anchor="middle" class="label">前端入口</text>
+  <text x="175" y="204" text-anchor="middle" class="small">商店 / 弹窗 / 设置 / 输入区</text>
+
+  <rect x="390" y="126" width="250" height="125" class="node purple"/>
+  <text x="515" y="164" text-anchor="middle" class="label">capabilityStore</text>
+  <text x="515" y="192" text-anchor="middle" class="small">统一加载、安装、会话开关</text>
+  <text x="515" y="219" text-anchor="middle" class="mono">src/stores/capabilityStore.js</text>
+
+  <rect x="755" y="126" width="275" height="125" class="node orange"/>
+  <text x="892" y="164" text-anchor="middle" class="label">Capability API</text>
+  <text x="892" y="192" text-anchor="middle" class="small">marketplace / installed / session</text>
+  <text x="892" y="219" text-anchor="middle" class="mono">/api/v1/skills/capabilities/*</text>
+
+  <rect x="110" y="340" width="200" height="100" class="node neutral"/>
+  <text x="210" y="375" text-anchor="middle" class="label">builtin</text>
+  <text x="210" y="404" text-anchor="middle" class="small">Java 内置工具</text>
+  <text x="210" y="426" text-anchor="middle" class="mono">@NativeSkill</text>
+
+  <rect x="370" y="340" width="200" height="100" class="node green"/>
+  <text x="470" y="375" text-anchor="middle" class="label">MCP</text>
+  <text x="470" y="404" text-anchor="middle" class="small">外部 MCP Server</text>
+  <text x="470" y="426" text-anchor="middle" class="mono">source=MCP</text>
+
+  <rect x="630" y="340" width="200" height="100" class="node purple"/>
+  <text x="730" y="375" text-anchor="middle" class="label">Claude Skills</text>
+  <text x="730" y="404" text-anchor="middle" class="small">SKILL.md prompt 语义</text>
+  <text x="730" y="426" text-anchor="middle" class="mono">source=CLAUDE_SKILL</text>
+
+  <rect x="890" y="340" width="200" height="100" class="node orange"/>
+  <text x="990" y="375" text-anchor="middle" class="label">CLI</text>
+  <text x="990" y="404" text-anchor="middle" class="small">命令行能力白名单</text>
+  <text x="990" y="426" text-anchor="middle" class="mono">source=CLI</text>
+
+  <rect x="315" y="535" width="570" height="82" class="node green"/>
+  <text x="600" y="567" text-anchor="middle" class="label">统一数据模型</text>
+  <text x="600" y="594" text-anchor="middle" class="mono">skill → user_skill_install → session_skill_setting → CapabilityDto</text>
+
+  <path class="line" d="M280 188H390"/>
+  <path class="line" d="M640 188H755"/>
+  <path class="line" d="M892 251v72"/>
+  <path class="line" d="M210 440v95h260"/>
+  <path class="line" d="M470 440v95"/>
+  <path class="line" d="M730 440v95"/>
+  <path class="line" d="M990 440v95H730"/>
+</svg>
