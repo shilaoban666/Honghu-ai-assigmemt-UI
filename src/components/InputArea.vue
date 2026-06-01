@@ -120,10 +120,126 @@
           <input ref="imageInput" type="file" @change="handleImageSelect" accept="image/*" style="display:none" multiple />
           <input ref="cameraInput" type="file" @change="handleCameraCapture" accept="image/*" capture="environment" style="display:none" />
 
-          <!-- 技能商店 -->
-          <button class="tool-btn" @click.stop="showSkillStore = true" :title="t('skillStore')">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/></svg>
-          </button>
+          <!-- 技能与工具菜单 -->
+          <div class="skill-tools-wrapper" ref="skillToolsRef">
+            <button class="tool-btn skill-store-btn" :class="{ active: showSkillToolsMenu }" @click.stop="showSkillToolsMenu = !showSkillToolsMenu" :title="skillStoreTitle">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/></svg>
+            </button>
+            <Transition name="tool-menu-pop">
+              <div v-if="showSkillToolsMenu" class="skill-tools-menu" @click.stop>
+                <div class="skill-menu-title">已装载能力和工具</div>
+                <button class="skill-menu-row resource-row" @click="openResourceLibrary">
+                  <span class="skill-menu-left">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    <span>资料库</span>
+                    <span class="scope-badge">全局</span>
+                  </span>
+                  <span class="skill-menu-chevron">›</span>
+                </button>
+                <div class="skill-menu-divider"></div>
+                <button class="skill-menu-row" :class="{ active: memoryEnabled }" @click="toggleMemorySkill">
+                  <span class="skill-menu-left">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 3a4 4 0 00-4 4v10a4 4 0 004 4h6a4 4 0 004-4V7a4 4 0 00-4-4H9z" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    <span>记忆</span>
+                  </span>
+                  <span v-if="memoryEnabled" class="skill-menu-check">✓</span>
+                </button>
+                <div class="skill-menu-divider"></div>
+                <div class="skill-menu-row has-submenu">
+                  <span class="skill-menu-left">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/></svg>
+                    <span>工具</span>
+                    <span class="auto-badge">{{ enabledToolCount }}</span>
+                  </span>
+                  <span class="skill-menu-chevron">›</span>
+                  <div class="skill-cascade-panel skill-submenu">
+                    <div class="submenu-head">
+                      <span>已安装工具</span>
+                      <small>工具帮助AI连接万物</small>
+                    </div>
+                    <button
+                      v-for="skill in installedToolItems"
+                      :key="skill.id"
+                      class="cascade-item"
+                      :class="{ active: isSkillEnabled(skill.id) }"
+                      @click.stop="toggleSkillById(skill.id)"
+                      :title="menuEnabledTitle(skill)"
+                    >
+                      <span class="cascade-icon" :class="{ text: skill.icon.length > 1 }">{{ skill.icon }}</span>
+                      <span class="cascade-copy">
+                        <strong>{{ skill.name }}</strong>
+                        <small>{{ skill.menuDesc }}</small>
+                      </span>
+                      <span class="cascade-state">{{ isSkillEnabled(skill.id) ? '✓' : '○' }}</span>
+                    </button>
+                    <div v-if="installedToolItems.length === 0" class="cascade-empty">还没有已安装工具</div>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
+                  </div>
+                </div>
+                <div class="skill-menu-row has-submenu cli-row" :class="{ active: cliEnabled }">
+                  <span class="skill-menu-left">
+                    <span class="cli-icon">CLI</span>
+                    <span>命令行</span>
+                    <span class="auto-badge">{{ enabledCliCount }}</span>
+                  </span>
+                  <span class="skill-menu-chevron">›</span>
+                  <div class="skill-cascade-panel cli-submenu">
+                    <div class="submenu-head">
+                      <span>已安装命令行</span>
+                      <small>命令帮助AI操作电脑</small>
+                    </div>
+                    <button
+                      v-for="cli in installedCliTools"
+                      :key="cli.id"
+                      class="cascade-item"
+                      :class="{ active: isCliEnabled(cli.id) }"
+                      @click.stop="toggleCliTool(cli.id)"
+                      :title="menuEnabledTitle(cli)"
+                    >
+                      <span class="cascade-icon terminal">{{ cli.icon }}</span>
+                      <span class="cascade-copy">
+                        <strong>{{ cli.name }}</strong>
+                        <small>{{ cli.menuDesc }}</small>
+                      </span>
+                      <span class="cascade-state">{{ isCliEnabled(cli.id) ? '✓' : '○' }}</span>
+                    </button>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
+                  </div>
+                </div>
+                <div class="skill-menu-row has-submenu">
+                  <span class="skill-menu-left">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 3l2.2 4.8L19 9l-3.8 3.2L16 18l-4-2.6L8 18l.8-5.8L5 9l4.8-1.2L12 3z" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                    <span>技能</span>
+                    <span class="auto-badge">{{ enabledClaudeSkillCount }}</span>
+                  </span>
+                  <span class="skill-menu-chevron">›</span>
+                  <div class="skill-cascade-panel skill-submenu">
+                    <div class="submenu-head">
+                      <span>已安装技能</span>
+                      <small>技能帮助AI掌握不同领域经验</small>
+                    </div>
+                    <button
+                      v-for="skill in installedClaudeSkills"
+                      :key="skill.id"
+                      class="cascade-item"
+                      :class="{ active: isSkillEnabled(skill.id) }"
+                      @click.stop="toggleSkillById(skill.id)"
+                      :title="menuEnabledTitle(skill)"
+                    >
+                      <span class="cascade-icon" :class="{ text: skill.icon.length > 1 }">{{ skill.icon }}</span>
+                      <span class="cascade-copy">
+                        <strong>{{ skill.name }}</strong>
+                        <small>{{ skill.menuDesc }}</small>
+                      </span>
+                      <span class="cascade-state">{{ isSkillEnabled(skill.id) ? '✓' : '○' }}</span>
+                    </button>
+                    <div v-if="installedClaudeSkills.length === 0" class="cascade-empty">还没有已安装技能</div>
+                    <button class="cascade-manage" @click.stop="openSkillStore">进入背包</button>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </div>
 
         <!-- 右侧：发送按钮 -->
@@ -247,15 +363,15 @@
 
     <!-- LobeHub 风格：技能/MCP 胶囊栏 -->
     <div class="skill-mcp-wrapper">
-      <div class="skill-mcp-pill" @click.stop="showSkillStore = true">
+      <div class="skill-mcp-pill" @click.stop="openSkillStore">
         <div class="skill-mcp-left">
           <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.8"/></svg>
-          <span>{{ t('addSkillsForAI') }}</span>
+          <span>为 AI 添加技能</span>
         </div>
         <div class="skill-mcp-right">
-          <span class="mcp-tag" v-for="t in activeSkillTags" :key="t">
-            {{ t }}
-            <button @click.stop="removeSkillTag(t)" class="mcp-tag-x">✕</button>
+          <span class="mcp-tag" v-for="chip in pillSkillChips" :key="chip.id">
+            {{ chip.name }}
+            <button @click.stop="removeSkillTag(chip.id)" class="mcp-tag-x">✕</button>
           </span>
           <span class="mcp-dot" title="Gmail">M</span>
           <span class="mcp-dot g" title="Google">G</span>
@@ -269,6 +385,9 @@
 
     <!-- 技能商店弹窗 -->
     <SkillStoreDialog :visible="showSkillStore" @close="showSkillStore = false" />
+
+    <!-- 资料库（全局文件 / 资源库）弹窗 -->
+    <ResourceLibraryDialog :visible="showResourceLibrary" @close="showResourceLibrary = false" />
 
     <!-- 截屏编辑器 -->
     <ScreenshotEditor
@@ -284,9 +403,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChat } from '@/stores/chatStore'
+import { useCapabilityStore, SYSTEM_CAPABILITY_KEYS, isSystemCapability } from '@/stores/capabilityStore'
 import { persistentStreamChat } from '@/api/chat'
 import { getUploadUrl, uploadFileToS3, registerUploadedFile, subscribeFileStatus, getFileExtension } from '@/api/rag'
 import SkillStoreDialog from '@/components/SkillStoreDialog.vue'
+import ResourceLibraryDialog from '@/components/ResourceLibraryDialog.vue'
 import ScreenshotEditor from '@/components/ScreenshotEditor.vue'
 import { t } from '@/utils/i18n'
 
@@ -296,6 +417,7 @@ defineProps({
 const emit = defineEmits(['send-message'])
 
 const chatStore = useChat()
+const capabilityStore = useCapabilityStore()
 const router = useRouter()
 const message = ref('')
 const attachedFiles = ref([])
@@ -305,17 +427,131 @@ const cameraInput = ref(null)
 const textareaRef = ref(null)
 const isFocused = ref(false)
 const uploadDropdownRef = ref(null)
+const skillToolsRef = ref(null)
 
 // 弹出面板状态
 const showModelPicker = ref(false)
 const showSkillStore = ref(false)
+const showResourceLibrary = ref(false)
 const showUploadMenu = ref(false)
+const showSkillToolsMenu = ref(false)
 const webSearchEnabled = ref(false)
 const modelSearch = ref('')
 
 // 截屏编辑器
 const showScreenshotEditor = ref(false)
 const screenshotImage = ref(null)
+// 输入区技能按钮标题里显示的数字；它和胶囊栏、商店弹窗共用 localStorage 状态。
+const enabledSkillCount = ref(Number(localStorage.getItem('enabledSkillCount') || 0))
+// 鼠标悬停工具按钮时展示“技能商店(N)”，让用户知道当前会话已经注入了多少个技能。
+const skillStoreTitle = computed(() => `${t('skillStore')} (${enabledSkillCount.value})`)
+// 安全读取 JSON；localStorage 可能被旧版本、浏览器插件或手动调试写坏，统一兜底避免输入区白屏。
+const readJsonStorage = (key, fallback) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback))
+    return Array.isArray(fallback) ? (Array.isArray(value) ? value : fallback) : (value && typeof value === 'object' ? value : fallback)
+  } catch {
+    return fallback
+  }
+}
+// 当前会话启用的能力 id 列表；它包含系统内置能力和用户安装能力。
+// 胶囊栏不会直接使用这个数组，因为 user_context、time、math 这类系统能力不应该显示成可删除标签。
+const enabledSkillIds = ref(readJsonStorage('enabledSkills', ['time', 'math', 'memory']))
+// 输入区菜单使用的技能目录；group 决定它应该出现在“技能”还是“CLI”级联面板里。
+// 资料库不是会话级技能，而是面向所有会话的全局文档库，已抽到独立的“文件 / 资源库”入口，故不在此目录中。
+const skillChipCatalog = [
+  { id: 'time', name: '时间', icon: '时', mandatory: true, menuDesc: '日期、时区、相对时间' },
+  { id: 'math', name: '计算器', icon: '算', mandatory: true, menuDesc: '表达式与统计计算' },
+  { id: 'memory', name: '记忆', icon: '记', mandatory: false, group: 'skill', menuDesc: '长期偏好与上下文' },
+  { id: 'session', name: '会话历史', icon: '历', mandatory: false, group: 'skill', menuDesc: '当前会话检索与摘要' },
+  { id: 'artifacts', name: 'Artifacts', icon: 'A', mandatory: false, group: 'skill', menuDesc: '生成代码块与交互产物' },
+  { id: 'tasks', name: '任务工具', icon: 'T', mandatory: false, group: 'skill', menuDesc: '拆解待办与执行计划' },
+  { id: 'cli', name: 'CLI', icon: 'CLI', mandatory: false, group: 'cli', menuDesc: '命令行执行入口' },
+  { id: 'mcp:github', name: 'GitHub', icon: 'GH', mandatory: false, group: 'skill', menuDesc: '仓库、Issue、PR 工具' },
+  { id: 'mcp:tavily', name: 'Tavily', icon: '搜', mandatory: false, group: 'skill', menuDesc: '网页搜索与内容提取' }
+]
+// 已安装 CLI 子工具基础目录；CLI 在 UI 上单独级联展示，避免和普通技能混在一起导致用户误解。
+const baseInstalledCliTools = [
+  { id: 'cli', name: 'CLI', icon: '>_', menuDesc: '受控命令执行' },
+  { id: 'cli:npm', name: 'npm scripts', icon: 'npm', menuDesc: '运行前端脚本' },
+  { id: 'cli:git', name: 'Git CLI', icon: 'git', menuDesc: '状态、差异与提交辅助' }
+]
+// 已启用的 CLI 子工具 id；单独存一份是为了让“CLI 技能”和“CLI 子工具”可以分别显示状态。
+const enabledCliIds = ref(readJsonStorage('enabledCliTools', ['cli']))
+// 全网 MCP 商店会把 mcp:market-* 的展示名写入 enabledSkillMeta；
+// 输入区读取它后，新增 MCP 才能马上出现在胶囊栏和级联菜单，而不是只显示一个生硬 id。
+const dynamicSkillMeta = ref(readJsonStorage('enabledSkillMeta', {}))
+// 输入区下方的胶囊栏只展示用户能主动选择、安装、关闭的能力。
+// 系统上下文类能力虽然会出现在后端 session 解析结果里，但它们属于运行时底座，
+// 不应像截图中的“用户身份”那样占用用户的技能胶囊空间。
+const isUserVisibleCapability = (capability = {}) => {
+  const key = capability.skillKey || capability.id || ''
+  return !SYSTEM_CAPABILITY_KEYS.has(key) && !isSystemCapability(capability)
+}
+// 「已安装能力」级联菜单（工具/命令行/技能）的统一数据源：
+// 直接取后端会话/已安装能力，只保留“已启用（含必装）”，与背包弹窗里的「我的」用同一批数据，保证两处一致。
+const myEnabledCapabilities = computed(() => {
+  const items = capabilityStore.sessionCapabilities.length ? capabilityStore.sessionCapabilities : capabilityStore.installed
+  return items.filter(c => c && (c.enabled || c.mandatory))
+})
+// 能力按 kind 归到 工具 / 命令行 / 技能 三个子菜单：内置工具+MCP→工具，cli→命令行，claude skill→技能。
+const capabilityMenuGroup = (c) => (c.kind === 'cli' ? 'cli' : c.kind === 'skill' ? 'skill' : 'tool')
+const capabilityToMenuItem = (c) => ({
+  id: c.skillKey,
+  name: c.name || c.skillKey,
+  icon: c.icon || (c.kind === 'mcp' ? 'MCP' : c.kind === 'cli' ? '>_' : '技'),
+  menuDesc: c.description || c.category || '',
+  enabledAt: c.enabledAt || null
+})
+// 命令行子菜单 = 后端已启用的 CLI 能力。
+const installedCliTools = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'cli').map(capabilityToMenuItem))
+const fullSkillCatalog = computed(() => {
+  const knownIds = new Set(skillChipCatalog.map(skill => skill.id))
+  const dynamicSkills = Object.values(dynamicSkillMeta.value)
+    .filter(skill => skill?.id && !knownIds.has(skill.id))
+    .filter(skill => isUserVisibleCapability({ id: skill.id, skillKey: skill.id, kind: skill.group, source: skill.source }))
+    .map(skill => ({
+      id: skill.id,
+      name: skill.name || skill.id,
+      icon: skill.icon || 'MCP',
+      mandatory: false,
+      group: skill.group || 'skill',
+      menuDesc: skill.menuDesc || '全网 MCP 技能',
+      enabledAt: skill.enabledAt || null
+    }))
+  return [...skillChipCatalog, ...dynamicSkills]
+})
+// 胶囊栏和菜单都只需要展示已启用技能，因此先用 Set 做一次快速筛选。
+const installedSkillChips = computed(() => {
+  const selected = new Set(enabledSkillIds.value)
+  return fullSkillCatalog.value
+    .filter(skill => selected.has(skill.id))
+    .filter(skill => isUserVisibleCapability({ id: skill.id, skillKey: skill.id, kind: skill.group, source: skill.source }))
+})
+// 胶囊栏空间有限，只显示非必装技能的前 3 个；时间和计算器这种必装项不挤占视觉空间。
+const pillSkillChips = computed(() => installedSkillChips.value.filter(skill => !skill.mandatory).slice(0, 3))
+// 菜单里“自动 N”的数字只统计用户能感知的非必装技能，避免 mandatory 技能让数字虚高。
+const menuSkillCount = computed(() => pillSkillChips.value.length)
+// 记忆是一级菜单里的快捷开关，因此单独做一个 computed，模板能直接显示选中勾。
+const memoryEnabled = computed(() => enabledSkillIds.value.includes('memory'))
+// CLI 既可以由技能级别开启，也可以由任意 CLI 子工具开启；任一条件满足就认为 CLI 一级菜单处于启用态。
+const cliEnabled = computed(() => enabledSkillIds.value.includes('cli') || enabledCliIds.value.length > 0)
+// CLI 一级菜单右侧的小数字，告诉用户当前有几个 CLI 子工具会被注入。
+const enabledCliCount = computed(() => installedCliTools.value.length)
+// 胶囊菜单的三分组：命令行(cli)、技能(Claude skill:)、工具(其余=内置工具+MCP)。
+// 用 id 前缀判定，比 group 字段更细：group 只有 cli/skill，无法区分内置/MCP/Claude。
+const menuGroupOf = (item) => {
+  const id = String(item?.id || '')
+  if (id === 'cli' || id.startsWith('cli:') || item?.group === 'cli') return 'cli'
+  if (id.startsWith('skill:')) return 'skill'
+  return 'tool'
+}
+// 工具子菜单 = 后端已启用的内置工具 + MCP；技能子菜单 = 后端已启用的 Claude 技能。两者都与背包「我的」一致。
+const installedToolItems = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'tool').map(capabilityToMenuItem))
+const installedClaudeSkills = computed(() => myEnabledCapabilities.value.filter(c => capabilityMenuGroup(c) === 'skill').map(capabilityToMenuItem))
+// 各分组数量徽标 = 对应子菜单条数（都是已启用项）。
+const enabledToolCount = computed(() => installedToolItems.value.length)
+const enabledClaudeSkillCount = computed(() => installedClaudeSkills.value.length)
 
 // 移动端检测
 const isMobileDevice = computed(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
@@ -331,11 +567,138 @@ const quotaRemainingPercent = computed(() => {
 })
 const showQuotaWarning = computed(() => chatStore.isLoggedIn && quotaWarningEnabled.value && quotaRemainingPercent.value < 10)
 const openUsageSettings = () => router.push('/settings/plan/usage')
+// 胶囊栏或级联菜单点击“管理”时统一走这里：先收起小菜单，再打开大商店。
+const openSkillStore = () => {
+  showSkillToolsMenu.value = false
+  showSkillStore.value = true
+}
+// 资料库是面向所有会话的全局文档库，点击后收起技能菜单并打开“文件 / 资源库”弹窗。
+const openResourceLibrary = () => {
+  showSkillToolsMenu.value = false
+  showResourceLibrary.value = true
+}
+// 从 localStorage 同步技能状态；商店弹窗保存后会发 skills-updated 事件，输入区靠这个函数刷新。
+const syncSkillState = () => {
+  const storeItems = capabilityStore.sessionCapabilities.length ? capabilityStore.sessionCapabilities : capabilityStore.installed
+  if (storeItems.length > 0 && !capabilityStore.usingFallback) {
+    enabledSkillIds.value = storeItems.filter(item => item.enabled || item.mandatory).map(item => item.skillKey)
+    enabledCliIds.value = storeItems.filter(item => (item.enabled || item.mandatory) && item.kind === 'cli').map(item => item.skillKey)
+  } else {
+    enabledSkillIds.value = readJsonStorage('enabledSkills', ['time', 'math', 'memory'])
+    enabledCliIds.value = readJsonStorage('enabledCliTools', ['cli'])
+  }
+  enabledSkillCount.value = fullSkillCatalog.value.filter(skill => enabledSkillIds.value.includes(skill.id) && isUserVisibleCapability(skill)).length
+  dynamicSkillMeta.value = readJsonStorage('enabledSkillMeta', {})
+}
+// 保存技能级开关；写完立即广播，确保胶囊栏、标题数字、商店列表都能同步。
+const persistSkillState = () => {
+  localStorage.setItem('enabledSkills', JSON.stringify(enabledSkillIds.value))
+  localStorage.setItem('enabledSkillCount', String(fullSkillCatalog.value.filter(skill => enabledSkillIds.value.includes(skill.id) && isUserVisibleCapability(skill)).length))
+  window.dispatchEvent(new Event('skills-updated'))
+}
+// 保存 CLI 子工具开关；CLI 子工具和技能级开关分开存，方便以后扩展更多命令行能力。
+const persistCliState = () => {
+  localStorage.setItem('enabledCliTools', JSON.stringify(enabledCliIds.value))
+  window.dispatchEvent(new Event('skills-updated'))
+}
+// 判断某个技能是否已启用；模板里大量使用，抽成函数可以避免重复 includes 写法。
+const isSkillEnabled = (skillId) => enabledSkillIds.value.includes(skillId)
+// 悬停提示：直接读取菜单项上的启用时间（来自后端能力），显示「启用于 X」。
+const menuEnabledTitle = (item) => {
+  const at = item?.enabledAt
+  if (!at) return ''
+  const d = new Date(at)
+  return Number.isNaN(d.getTime()) ? '' : `启用于 ${d.toLocaleString()}`
+}
+// 判断某个 CLI 子工具是否已启用；和 isSkillEnabled 分开，避免把 CLI 子工具误当普通技能。
+const isCliEnabled = (cliId) => enabledCliIds.value.includes(cliId)
+// 胶囊栏标签右侧的删除按钮；必装技能不允许删除，保护时间/计算器这类基础能力。
+const currentSessionId = () => {
+  const id = chatStore.currentChatId
+  return typeof id === 'string' ? id : String(id || '')
+}
 
-// 技能标签
-const activeSkillTags = ref([])
-const removeSkillTag = (t) => {
-  activeSkillTags.value = activeSkillTags.value.filter(x => x !== t)
+const refreshCapabilitiesForCurrentSession = async () => {
+  await capabilityStore.fetchSession(currentSessionId())
+  syncSkillState()
+}
+
+const removeSkillTag = async (skillId) => {
+  const mandatoryIds = new Set(fullSkillCatalog.value.filter(skill => skill.mandatory).map(skill => skill.id))
+  if (mandatoryIds.has(skillId)) return
+  const sessionId = currentSessionId()
+  try {
+    await capabilityStore.toggleSessionSkill(sessionId, skillId, false)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('会话技能关闭接口不可用，使用本地缓存兜底:', error)
+  }
+  enabledSkillIds.value = enabledSkillIds.value.filter(id => id !== skillId)
+  if (dynamicSkillMeta.value[skillId]) {
+    const nextMeta = { ...dynamicSkillMeta.value }
+    delete nextMeta[skillId]
+    dynamicSkillMeta.value = nextMeta
+    localStorage.setItem('enabledSkillMeta', JSON.stringify(nextMeta))
+  }
+  // 如果删除的是 CLI 技能，也要同步移除 CLI 子工具里的主 CLI 项，避免菜单显示“子工具启用但技能未启用”的矛盾。
+  if (skillId === 'cli') {
+    enabledCliIds.value = enabledCliIds.value.filter(id => id !== 'cli')
+    persistCliState()
+  }
+  persistSkillState()
+  syncSkillState()
+}
+// 级联菜单中普通技能的开关逻辑；mandatory 技能直接返回，不给用户关闭入口。
+const toggleSkillById = async (skillId) => {
+  const catalogSkill = fullSkillCatalog.value.find(skill => skill.id === skillId)
+  if (catalogSkill?.mandatory) return
+  const nextEnabled = !enabledSkillIds.value.includes(skillId)
+  try {
+    await capabilityStore.toggleSessionSkill(currentSessionId(), skillId, nextEnabled)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('会话技能开关接口不可用，使用本地缓存兜底:', error)
+  }
+  const next = new Set(enabledSkillIds.value)
+  if (next.has(skillId)) next.delete(skillId)
+  else next.add(skillId)
+  enabledSkillIds.value = Array.from(next)
+  // CLI 是一个特殊技能：它既是技能包，也是 CLI 子工具集合的父入口，所以切换时要同步 enabledCliTools。
+  if (skillId === 'cli') {
+    const cliNext = new Set(enabledCliIds.value)
+    if (next.has('cli')) cliNext.add('cli')
+    else cliNext.delete('cli')
+    enabledCliIds.value = Array.from(cliNext)
+    persistCliState()
+  }
+  persistSkillState()
+}
+// CLI 子工具开关；只要还有任意 CLI 子工具开启，就把技能级 cli 放入 enabledSkills。
+const toggleCliTool = async (cliId) => {
+  const nextEnabled = !enabledCliIds.value.includes(cliId)
+  try {
+    await capabilityStore.toggleSessionSkill(currentSessionId(), cliId, nextEnabled)
+    syncSkillState()
+    return
+  } catch (error) {
+    console.warn('CLI 会话开关接口不可用，使用本地缓存兜底:', error)
+  }
+  const next = new Set(enabledCliIds.value)
+  if (next.has(cliId)) next.delete(cliId)
+  else next.add(cliId)
+  enabledCliIds.value = Array.from(next)
+  const skillNext = new Set(enabledSkillIds.value)
+  if (enabledCliIds.value.length > 0) skillNext.add('cli')
+  else skillNext.delete('cli')
+  enabledSkillIds.value = Array.from(skillNext)
+  persistCliState()
+  persistSkillState()
+}
+// “记忆”是一级菜单快捷项，本质还是普通技能开关，所以复用统一的 toggleSkillById。
+const toggleMemorySkill = () => {
+  toggleSkillById('memory')
 }
 
 // LobeHub 图标 CDN 基础 URL
@@ -486,6 +849,7 @@ const selectModel = (m) => {
 const closeAllPopups = () => {
   showModelPicker.value = false
   showUploadMenu.value = false
+  showSkillToolsMenu.value = false
 }
 
 // 点击外部关闭上传菜单
@@ -493,20 +857,42 @@ function handleClickOutside(e) {
   if (uploadDropdownRef.value && !uploadDropdownRef.value.contains(e.target)) {
     showUploadMenu.value = false
   }
+  if (skillToolsRef.value && !skillToolsRef.value.contains(e.target)) {
+    showSkillToolsMenu.value = false
+  }
 }
-onMounted(() => document.addEventListener('click', handleClickOutside))
+onMounted(() => {
+  refreshCapabilitiesForCurrentSession().catch((error) => {
+    console.warn('能力状态接口不可用，使用本地缓存兜底:', error)
+    syncSkillState()
+  })
+  document.addEventListener('click', handleClickOutside)
+  window.addEventListener('storage', syncSkillState)
+  window.addEventListener('skills-updated', syncSkillState)
+})
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('storage', syncSkillState)
+  window.removeEventListener('skills-updated', syncSkillState)
   attachedFiles.value.forEach(f => f.closeSSE?.())
+})
+
+watch(() => chatStore.currentChatId, () => {
+  refreshCapabilitiesForCurrentSession().catch((error) => {
+    console.warn('切换会话后能力状态刷新失败，使用本地缓存兜底:', error)
+    syncSkillState()
+  })
 })
 
 // 文件处理
 const triggerFileInput = () => {
   showUploadMenu.value = false
+  showSkillToolsMenu.value = false
   fileInput.value?.click()
 }
 const triggerImageInput = () => {
   showUploadMenu.value = false
+  showSkillToolsMenu.value = false
   imageInput.value?.click()
 }
 
@@ -798,7 +1184,7 @@ const autoResize = (e) => {
   background: var(--bg-primary);
   border-radius: 22px;
   border: 1.5px solid var(--border-color);
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
   transition: border-color 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -1088,7 +1474,7 @@ const autoResize = (e) => {
   background: var(--hover-bg-medium);
   color: var(--primary-color);
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 4px 14px rgba(45, 134, 89, 0.12);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color) 18%, transparent);
 }
 .tool-btn:active {
   transform: scale(0.9);
@@ -1097,6 +1483,326 @@ const autoResize = (e) => {
 .tool-btn.active {
   background: var(--hover-bg-medium);
   color: var(--primary-color);
+}
+
+.skill-store-btn {
+  width: 36px;
+  overflow: hidden;
+}
+
+.skill-tools-wrapper {
+  position: relative;
+}
+
+.skill-tools-menu {
+  /* 菜单固定挂在技能按钮正上方，避免遮挡输入框正文区域。 */
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 286px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% -10%, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 36%),
+    var(--bg-primary);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16), 0 0 0 1px color-mix(in srgb, var(--primary-color) 6%, transparent) inset;
+  z-index: 130;
+}
+
+.skill-menu-title {
+  padding: 7px 10px 8px;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.skill-menu-row {
+  width: 100%;
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: background 0.16s ease;
+}
+
+.skill-menu-row:hover,
+.skill-menu-row.active,
+.skill-menu-row.muted:hover {
+  background: var(--hover-bg);
+}
+
+.skill-menu-row.muted {
+  color: var(--text-sub);
+}
+
+.skill-menu-row.cli-row {
+  color: var(--primary-color);
+}
+
+.skill-menu-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.skill-menu-left svg {
+  flex-shrink: 0;
+}
+
+.skill-menu-chevron {
+  color: var(--text-sub);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.skill-menu-check {
+  color: var(--primary-color);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.auto-badge {
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--hover-bg-medium);
+  color: var(--text-sub);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.scope-badge {
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.skill-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 6px -8px;
+}
+
+.skill-cascade-panel {
+  /* 级联面板默认隐藏，父级 hover 时才展开。锚定到行底部并向上展开，避免菜单贴近屏幕底部时被裁切。 */
+  display: none;
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 0;
+  top: auto;
+  width: 318px;
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% -10%, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 36%),
+    var(--bg-primary);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16), 0 0 0 1px color-mix(in srgb, var(--primary-color) 6%, transparent) inset;
+  animation: cascadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.has-submenu:hover .skill-cascade-panel {
+  /* 用户移到带箭头的行上时才显示右侧面板，减少主菜单初始信息密度。 */
+  display: block;
+}
+
+/* 透明“悬停桥”：把它放在“行”上而不是二级面板上。
+   二级面板有 overflow-y:auto，会连带把 overflow-x 变成 auto，从而裁掉放在面板负偏移处的桥；
+   而行没有 overflow 裁剪，所以这里用 .has-submenu::after 覆盖行与面板之间的间隙，
+   光标从行平移到面板时始终停留在 .has-submenu 的 hover 区域内，面板不再消失。 */
+.has-submenu::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 18px;
+  display: none;
+}
+
+.has-submenu:hover::after {
+  display: block;
+}
+
+.submenu-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 4px 9px;
+}
+
+.submenu-head span {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.submenu-head small {
+  color: var(--text-sub);
+  font-size: 11px;
+}
+
+.cascade-item {
+  /* 每个级联项固定高度，保证技能名称、说明和状态符号变化时不会造成菜单跳动。 */
+  width: 100%;
+  height: 54px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.cascade-item:hover {
+  background: var(--hover-bg);
+  transform: translateX(2px);
+}
+
+.cascade-item.active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+.cascade-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--hover-bg-medium);
+  color: var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cascade-icon.text,
+.cascade-icon.terminal {
+  font-size: 10px;
+}
+
+.cascade-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cascade-copy strong {
+  font-size: 13px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cascade-copy small {
+  color: var(--text-sub);
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cascade-state {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--hover-bg-medium);
+  color: var(--text-sub);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cascade-item.active .cascade-state {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  color: #fff;
+}
+
+.cascade-empty {
+  padding: 14px 6px;
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.cascade-manage {
+  width: 100%;
+  height: 34px;
+  margin-top: 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.cascade-manage:hover {
+  border-color: color-mix(in srgb, var(--primary-color) 40%, transparent);
+  background: var(--hover-bg);
+}
+
+.cli-icon {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary-color);
+}
+
+@keyframes cascadeIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tool-menu-pop-enter-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tool-menu-pop-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.tool-menu-pop-enter-from,
+.tool-menu-pop-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
 }
 
 /* ─── Provider 官方图标（LobeHub CDN） ─── */
@@ -1389,7 +2095,10 @@ const autoResize = (e) => {
 .skill-mcp-wrapper {
   display: flex;
   justify-content: center;
-  margin-top: -4px;
+  width: 100%;
+  max-width: 780px;
+  margin-top: -3px;
+  padding: 0 116px 0 116px;
 }
 
 .skill-mcp-pill {
@@ -1397,13 +2106,13 @@ const autoResize = (e) => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-height: 48px;
   padding: 7px 18px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
-  max-width: 600px;
   width: 100%;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
@@ -1445,6 +2154,10 @@ const autoResize = (e) => {
   font-size: 11px;
   color: var(--primary-color);
   font-weight: 500;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mcp-tag-x {
   background: none;
@@ -1582,6 +2295,19 @@ const autoResize = (e) => {
     width: 160px;
     left: 0;
     transform: translateX(0);
+  }
+  .skill-tools-menu {
+    width: min(286px, calc(100vw - 24px));
+  }
+  .skill-cascade-panel {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    box-shadow: none;
+    border-color: var(--border-color);
+  }
+  .has-submenu:hover .skill-cascade-panel {
+    display: block;
   }
   .upload-pop-enter-from,
   .upload-pop-leave-to {

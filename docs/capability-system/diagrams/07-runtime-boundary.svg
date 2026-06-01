@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#7f7b73"/></marker>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.node{rx:10;stroke-width:1.5}.blue{fill:#e8f3ff;stroke:#6aa3df}.green{fill:#dff4ee;stroke:#4ba993}.purple{fill:#eeeaff;stroke:#8b80e8}.orange{fill:#fff1dc;stroke:#d9963a}.neutral{fill:#f7f5ef;stroke:#aaa69d}.label{font:700 16px "Microsoft YaHei",Arial,sans-serif;fill:#333}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#4f4b45}.mono{font:500 12px Consolas,monospace;fill:#555}.line{stroke:#7f7b73;stroke-width:1.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#aaa69d;stroke-width:1.5;stroke-dasharray:7 7;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="700"/>
+  <text x="60" y="58" class="title">运行时边界：已完成与待完成</text>
+
+  <rect x="70" y="135" width="235" height="110" class="node blue"/>
+  <text x="187" y="174" text-anchor="middle" class="label">聊天请求</text>
+  <text x="187" y="202" text-anchor="middle" class="small">sessionId + userId</text>
+  <text x="187" y="224" text-anchor="middle" class="mono">ChatService</text>
+
+  <rect x="395" y="135" width="235" height="110" class="node orange"/>
+  <text x="512" y="174" text-anchor="middle" class="label">SkillResolverService</text>
+  <text x="512" y="202" text-anchor="middle" class="small">解析启用能力</text>
+  <text x="512" y="224" text-anchor="middle" class="mono">enabled skill ids</text>
+
+  <rect x="720" y="135" width="235" height="110" class="node green"/>
+  <text x="837" y="174" text-anchor="middle" class="label">BuiltinSkillProvider</text>
+  <text x="837" y="202" text-anchor="middle" class="small">已可用</text>
+  <text x="837" y="224" text-anchor="middle" class="mono">Java tool callbacks</text>
+
+  <rect x="145" y="405" width="235" height="110" class="node purple"/>
+  <text x="262" y="444" text-anchor="middle" class="label">McpSkillProvider</text>
+  <text x="262" y="472" text-anchor="middle" class="small">待实现</text>
+  <text x="262" y="494" text-anchor="middle" class="mono">tools/list + tools/call</text>
+
+  <rect x="482" y="405" width="235" height="110" class="node purple"/>
+  <text x="599" y="444" text-anchor="middle" class="label">SkillPromptResolver</text>
+  <text x="599" y="472" text-anchor="middle" class="small">待实现</text>
+  <text x="599" y="494" text-anchor="middle" class="mono">SKILL.md prompt injection</text>
+
+  <rect x="820" y="405" width="235" height="110" class="node purple"/>
+  <text x="937" y="444" text-anchor="middle" class="label">CliSkillProvider</text>
+  <text x="937" y="472" text-anchor="middle" class="small">待实现</text>
+  <text x="937" y="494" text-anchor="middle" class="mono">sandbox + approval + audit</text>
+
+  <rect x="395" y="570" width="410" height="72" class="node neutral"/>
+  <text x="600" y="600" text-anchor="middle" class="label">Provider 工具调用</text>
+  <text x="600" y="625" text-anchor="middle" class="small">Ollama 已接 Spring AI tools；OpenAI-compatible adapter 仍需补齐。</text>
+
+  <path class="line" d="M305 190h90"/>
+  <path class="line" d="M630 190h90"/>
+  <path class="dash" d="M512 245v105H262v55"/>
+  <path class="dash" d="M512 245v160"/>
+  <path class="dash" d="M512 245v105h425v55"/>
+  <path class="line" d="M837 245v300H600v25"/>
+</svg>

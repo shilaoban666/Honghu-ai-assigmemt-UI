@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#7f7b73"/></marker>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.table{fill:#f7f5ef;stroke:#aaa69d;stroke-width:1.5;rx:10}.head{fill:#dff4ee;stroke:#4ba993;stroke-width:1.5;rx:10}.label{font:700 17px "Microsoft YaHei",Arial,sans-serif;fill:#333}.field{font:500 13px Consolas,"Microsoft YaHei",monospace;fill:#4f4b45}.note{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#6c6861}.line{stroke:#7f7b73;stroke-width:1.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#aaa69d;stroke-width:1.2;stroke-dasharray:6 6;fill:none}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="700"/>
+  <text x="60" y="58" class="title">三层状态模型</text>
+  <text x="60" y="86" class="note">skill 是全局目录；user_skill_install 是用户安装；session_skill_setting 是会话启用覆盖。</text>
+
+  <rect x="70" y="135" width="310" height="360" class="table"/>
+  <rect x="70" y="135" width="310" height="48" class="head"/>
+  <text x="225" y="166" text-anchor="middle" class="label">skill</text>
+  <text x="95" y="215" class="field">id pk</text>
+  <text x="95" y="242" class="field">skill_key unique</text>
+  <text x="95" y="269" class="field">source BUILTIN/MCP/CLI...</text>
+  <text x="95" y="296" class="field">display_name / description</text>
+  <text x="95" y="323" class="field">category / required_role</text>
+  <text x="95" y="350" class="field">default_enabled / mandatory</text>
+  <text x="95" y="377" class="field">mcp_transport / endpoint</text>
+  <text x="95" y="404" class="field">mcp_env_schema jsonb</text>
+  <text x="95" y="431" class="field">rating / downloads</text>
+  <text x="95" y="458" class="field">enabled / timestamps</text>
+
+  <rect x="445" y="135" width="310" height="260" class="table"/>
+  <rect x="445" y="135" width="310" height="48" class="head"/>
+  <text x="600" y="166" text-anchor="middle" class="label">user_skill_install</text>
+  <text x="470" y="215" class="field">id pk</text>
+  <text x="470" y="242" class="field">user_id</text>
+  <text x="470" y="269" class="field">skill_id fk → skill.id</text>
+  <text x="470" y="296" class="field">user_config jsonb</text>
+  <text x="470" y="323" class="field">enabled</text>
+  <text x="470" y="350" class="field">installed_at</text>
+
+  <rect x="820" y="135" width="310" height="260" class="table"/>
+  <rect x="820" y="135" width="310" height="48" class="head"/>
+  <text x="975" y="166" text-anchor="middle" class="label">session_skill_setting</text>
+  <text x="845" y="215" class="field">session_id pk</text>
+  <text x="845" y="242" class="field">skill_id pk fk → skill.id</text>
+  <text x="845" y="269" class="field">enabled true/false</text>
+  <text x="845" y="296" class="field">显式覆盖默认规则</text>
+
+  <rect x="445" y="485" width="310" height="120" class="table"/>
+  <rect x="445" y="485" width="310" height="48" class="head"/>
+  <text x="600" y="516" text-anchor="middle" class="label">skill_tool</text>
+  <text x="470" y="562" class="field">skill_id fk → skill.id</text>
+  <text x="470" y="589" class="field">qualified_name / parameters_schema jsonb</text>
+
+  <path class="line" d="M380 260H445"/>
+  <path class="line" d="M755 260H820"/>
+  <path class="line" d="M600 395v90"/>
+  <path class="dash" d="M225 495c70 80 260 90 375 110"/>
+  <text x="810" y="530" class="note">CapabilityDto 由这些表组合得出</text>
+  <text x="810" y="556" class="note">installed = 隐式安装或用户安装</text>
+  <text x="810" y="582" class="note">enabled = resolver 计算后的会话态</text>
+</svg>
