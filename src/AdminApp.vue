@@ -398,6 +398,53 @@
         </DataState>
       </section>
 
+      <section v-else-if="route.section === 'providers'" class="admin-page">
+        <div class="page-tools">
+          <div class="tool-title">
+            <h2>Provider 注册表</h2>
+            <span>{{ providers.length }} 个提供商 · API Key 加密存储，仅显示掩码</span>
+          </div>
+          <button class="admin-btn" @click="openProviderCreate">新增 Provider</button>
+        </div>
+        <section class="admin-panel">
+          <DataState :loading="loading.providers" :error="errors.providers" @retry="loadProviders">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>编码</th>
+                  <th>展示名</th>
+                  <th>类型</th>
+                  <th>Base URL</th>
+                  <th>API Key</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in providers" :key="p.providerCode">
+                  <td class="mono strong">{{ p.providerCode }}</td>
+                  <td>{{ p.displayName || '-' }}</td>
+                  <td><span :class="['admin-chip', p.providerType === 'OLLAMA_LOCAL' ? 'green' : 'blue']">{{ p.providerType }}</span></td>
+                  <td class="mono">{{ p.baseUrl }}</td>
+                  <td>
+                    <span class="admin-chip gray">{{ p.hasApiKey ? (p.apiKeyMasked || '••••') : '无' }}</span>
+                  </td>
+                  <td><StatusPill :ok="p.enabled !== false" :text="p.enabled === false ? '禁用' : '启用'" /></td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="text-btn" @click="openProviderEdit(p)">编辑</button>
+                      <button class="text-btn" @click="toggleProvider(p)">{{ p.enabled === false ? '启用' : '禁用' }}</button>
+                      <button class="text-btn danger" @click="removeProvider(p)">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <EmptyState v-if="providers.length === 0" text="暂无 Provider，请先新增 Provider 并填写 API Key" />
+          </DataState>
+        </section>
+      </section>
+
       <section v-else-if="route.section === 'roles'" class="admin-page">
         <div class="page-tools">
           <div class="tool-title">
@@ -1207,6 +1254,41 @@
       </form>
     </div>
 
+    <div v-if="providerModal.visible" class="admin-modal-mask" @click.self="closeProviderModal">
+      <form class="admin-modal large" @submit.prevent="submitProvider">
+        <div class="modal-head">
+          <h2>{{ providerModal.mode === 'create' ? '新增 Provider' : '编辑 Provider' }}</h2>
+          <button type="button" @click="closeProviderModal">×</button>
+        </div>
+        <div v-if="providerModal.error" class="form-error">{{ providerModal.error }}</div>
+        <div class="form-grid">
+          <label><span>Provider 编码 *</span><input v-model.trim="providerForm.providerCode" :disabled="providerModal.mode !== 'create'" /></label>
+          <label><span>展示名</span><input v-model.trim="providerForm.displayName" /></label>
+          <label><span>类型</span>
+            <select v-model="providerForm.providerType">
+              <option value="OPENAI_COMPATIBLE">OPENAI_COMPATIBLE</option>
+              <option value="OLLAMA_LOCAL">OLLAMA_LOCAL</option>
+            </select>
+          </label>
+          <label><span>Base URL *</span><input v-model.trim="providerForm.baseUrl" placeholder="https://api.deepseek.com" /></label>
+          <label><span>Chat 路径</span><input v-model.trim="providerForm.chatCompletionsPath" /></label>
+          <label class="check-row"><input v-model="providerForm.useApiKey" type="checkbox" /> 需要 API Key</label>
+          <label class="wide">
+            <span>API Key{{ providerModal.mode === 'edit' ? '（留空 = 不修改）' : '' }}</span>
+            <input v-model.trim="providerForm.apiKey" type="password" autocomplete="new-password"
+                   :placeholder="providerModal.mode === 'edit' ? '留空则保持原 Key 不变' : 'sk-...'" />
+          </label>
+          <label><span>Key Header</span><input v-model.trim="providerForm.apiKeyHeader" /></label>
+          <label><span>Key 前缀</span><input v-model.trim="providerForm.apiKeyPrefix" placeholder="Bearer " /></label>
+          <label class="check-row"><input v-model="providerForm.enabled" type="checkbox" /> 启用</label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="admin-btn ghost" @click="closeProviderModal">取消</button>
+          <button class="admin-btn" type="submit">{{ providerModal.mode === 'create' ? '创建' : '保存' }}</button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="pricingModal.visible" class="admin-modal-mask" @click.self="pricingModal.visible = false">
       <form class="admin-modal" @submit.prevent="submitPricing">
         <div class="modal-head">
@@ -1432,6 +1514,7 @@ const userStatusOptions = ['ACTIVE', 'INACTIVE', 'BANNED', 'PENDING_VERIFICATION
 const navItems = [
   { path: '/admin/dashboard', section: 'dashboard', label: '仪表盘', icon: '▦' },
   { path: '/admin/models', section: 'models', label: '模型目录', icon: '◇' },
+  { path: '/admin/providers', section: 'providers', label: 'Provider', icon: '⚡' },
   { path: '/admin/roles', section: 'roles', label: '角色配置', icon: '◎' },
   { path: '/admin/users', section: 'users', label: '用户管理', icon: '◌' },
   { path: '/admin/workspaces', section: 'workspaces', label: 'Workspace', icon: '□' },
@@ -1542,7 +1625,7 @@ const AdminChart = defineComponent({
       chart.value?.dispose()
       chart.value = null
     })
-    watch(() => props.option, () => nextTick(render), { deep: true })
+    watch(() => props.option, async () => { await nextTick(); render() }, { deep: true })
     return () => h('div', { ref: el, class: 'admin-echart', style: { height: `${props.height}px` } })
   }
 })
@@ -1707,6 +1790,9 @@ const ragPage = reactive({ page: 0, size: 30, totalPages: 1 })
 
 const modelModal = reactive({ visible: false, mode: 'create', error: '' })
 const modelForm = reactive(defaultModelForm())
+const providers = ref([])
+const providerModal = reactive({ visible: false, mode: 'create', error: '' })
+const providerForm = reactive(defaultProviderForm())
 const pricingModal = reactive({ visible: false, code: '', error: '' })
 const pricingForm = reactive(defaultPricingForm())
 const quotaModal = reactive({ visible: false, role: '' })
@@ -2379,6 +2465,7 @@ async function runConfirm() {
 async function loadCurrent() {
   if (route.section === 'dashboard') return loadDashboard()
   if (route.section === 'models') return route.id ? loadModelDetail(route.id) : loadModels()
+  if (route.section === 'providers') return loadProviders()
   if (route.section === 'roles') return loadRolesPage()
   if (route.section === 'users') return route.id ? loadUserDetail(route.id) : loadUsersPage()
   if (route.section === 'workspaces') return route.id ? loadWorkspaceDetail(route.id) : loadWorkspacesPage()
@@ -2428,6 +2515,126 @@ function topModelPercent(item) {
 async function loadModels() {
   await run('models', async () => {
     models.value = extractList(await adminApi.getModels())
+  })
+}
+
+function defaultProviderForm() {
+  return {
+    providerCode: '',
+    displayName: '',
+    providerType: 'OPENAI_COMPATIBLE',
+    baseUrl: '',
+    chatCompletionsPath: '/v1/chat/completions',
+    useApiKey: true,
+    apiKey: '',
+    apiKeyHeader: 'Authorization',
+    apiKeyPrefix: 'Bearer ',
+    enabled: true
+  }
+}
+
+async function loadProviders() {
+  await run('providers', async () => {
+    providers.value = extractList(await adminApi.getProviders())
+  })
+}
+
+function openProviderCreate() {
+  providerModal.visible = true
+  providerModal.mode = 'create'
+  providerModal.error = ''
+  resetReactive(providerForm, defaultProviderForm())
+}
+
+function openProviderEdit(row) {
+  providerModal.visible = true
+  providerModal.mode = 'edit'
+  providerModal.error = ''
+  resetReactive(providerForm, {
+    ...defaultProviderForm(),
+    providerCode: row.providerCode,
+    displayName: row.displayName || '',
+    providerType: row.providerType || 'OPENAI_COMPATIBLE',
+    baseUrl: row.baseUrl || '',
+    chatCompletionsPath: row.chatCompletionsPath || '/v1/chat/completions',
+    useApiKey: row.useApiKey !== false,
+    apiKey: '',
+    apiKeyHeader: row.apiKeyHeader || 'Authorization',
+    apiKeyPrefix: row.apiKeyPrefix || '',
+    enabled: row.enabled !== false
+  })
+}
+
+function closeProviderModal() {
+  providerModal.visible = false
+}
+
+function validateProviderForm() {
+  if (!providerForm.providerCode) return 'providerCode 必填'
+  if (!providerForm.baseUrl) return 'baseUrl 必填'
+  return ''
+}
+
+async function submitProvider() {
+  const error = validateProviderForm()
+  if (error) {
+    providerModal.error = error
+    return
+  }
+  const payload = {
+    displayName: providerForm.displayName,
+    providerType: providerForm.providerType,
+    baseUrl: providerForm.baseUrl,
+    chatCompletionsPath: providerForm.chatCompletionsPath,
+    useApiKey: providerForm.useApiKey,
+    apiKeyHeader: providerForm.apiKeyHeader,
+    apiKeyPrefix: providerForm.apiKeyPrefix,
+    enabled: providerForm.enabled
+  }
+  // 仅当填写了 API Key 才提交（编辑时留空 = 保持原 Key 不变）。
+  if (providerForm.apiKey) payload.apiKey = providerForm.apiKey
+  try {
+    if (providerModal.mode === 'create') {
+      payload.providerCode = providerForm.providerCode
+      await adminApi.createProvider(payload)
+      showToast('Provider 已创建')
+    } else {
+      await adminApi.patchProvider(providerForm.providerCode, payload)
+      showToast('Provider 已保存')
+    }
+    providerModal.visible = false
+    await loadProviders()
+  } catch (errorObj) {
+    providerModal.error = errorObj.message
+    showError(errorObj)
+  }
+}
+
+async function toggleProvider(row) {
+  const next = row.enabled === false
+  try {
+    await adminApi.setProviderEnabled(row.providerCode, next)
+    showToast(next ? 'Provider 已启用' : 'Provider 已禁用')
+    await loadProviders()
+  } catch (error) {
+    showError(error)
+  }
+}
+
+function removeProvider(row) {
+  askConfirm({
+    title: '删除 Provider',
+    message: `确认删除 Provider ${row.providerCode}？若仍有模型引用它会删除失败。`,
+    danger: true,
+    action: async () => {
+      try {
+        await adminApi.deleteProvider(row.providerCode)
+        showToast('Provider 已删除')
+        await loadProviders()
+      } catch (error) {
+        showError(error)
+      }
+    }
   })
 }
 

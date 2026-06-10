@@ -212,25 +212,11 @@ export const useChat = defineStore('chat', () => {
 
     loading.value = true
     try {
-      if (typeof callAIAPI !== 'function') {
-        throw new Error('AI API 未接入')
-      }
-
-      const response = await callAIAPI({
-        message: userMessage,
-        history: chat.messages.slice(-10),
-        memory: chat.memory
-      })
-
-      addMessage(chatId, {
-        role: 'assistant',
-        content: response.content,
-        timestamp: Date.now()
-      })
-
-      if (response.memory) {
-        chat.memory = response.memory
-      }
+      // 先把用户输入落到会话里。
+      addMessage(chatId, { role: 'user', content: userMessage, timestamp: Date.now() })
+      // 真实对话走 api/chat.js 的流式接口（persistentStreamChat）。
+      // store 内这条非流式入口属于早期占位，未接入模型调用，统一抛错走下方降级提示。
+      throw new Error('AI API 未接入：请改用流式聊天接口 persistentStreamChat')
     } catch (error) {
       console.error('发送消息失败:', error)
       addMessage(chatId, {

@@ -1,4 +1,5 @@
 import { buildIdentityHeaders } from '@/api/identity'
+import { API_BASE_URL } from '@/api/http'
 
 /**
  * RAG 文件上传 API
@@ -9,7 +10,7 @@ import { buildIdentityHeaders } from '@/api/identity'
  *   2. PUT  <uploadUrl>                       → 直传文件到 S3
  */
 
-const BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
+const BASE = API_BASE_URL
 
 /**
  * 第一步：获取 S3 预签名上传 URL

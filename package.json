@@ -11,7 +11,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{js,vue,css}\""
   },
   "dependencies": {
     "@lucide/vue": "^1.16.0",
@@ -22,12 +25,18 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.50.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^9.33.0",
+    "globals": "^17.6.0",
     "jsdom": "^24.0.0",
     "postcss": "^8.4.0",
+    "prettier": "^3.8.3",
     "tailwindcss": "^3.4.0",
     "vite": "^5.4.0",
     "vitest": "^2.0.0"
