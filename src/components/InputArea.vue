@@ -263,6 +263,9 @@
             <input v-model="modelSearch" class="picker-input" :placeholder="t('searchModel')" />
           </div>
           <div class="picker-list">
+            <div v-if="models.length === 0" class="picker-empty">
+              暂无可用模型。请先在后台配置 Provider 与模型并授权给你的角色，然后重新登录。
+            </div>
             <!-- 第一梯队 -->
             <template v-if="tier1Models.length > 0 && !modelSearch">
               <div class="picker-group-label">{{ t('tier1') }} ⚡⚡⚡</div>
@@ -369,10 +372,6 @@
           <span>为 AI 添加技能</span>
         </div>
         <div class="skill-mcp-right">
-          <span class="mcp-tag" v-for="chip in pillSkillChips" :key="chip.id">
-            {{ chip.name }}
-            <button @click.stop="removeSkillTag(chip.id)" class="mcp-tag-x">✕</button>
-          </span>
           <span class="mcp-dot" title="Gmail">M</span>
           <span class="mcp-dot g" title="Google">G</span>
           <span class="mcp-dot s" title="Slack">S</span>
@@ -780,13 +779,10 @@ const getProviderFromModel = (modelCode) => {
   return 'ollama'
 }
 
-// 默认模型（后端不可用时的回退）
-const fallbackModels = [
-  { value: 'deepseek-r1:8b',     label: 'DeepSeek R1 8B',    provider: 'deepseek', level: 2, local: true },
-  { value: 'claude-sonnet-4-6',  label: 'Claude Sonnet 4.6', provider: 'anthropic', level: 1, local: false },
-  { value: 'gpt-4o',             label: 'GPT-4o',            provider: 'openai',    level: 1, local: false },
-  { value: 'gemini-2.5-pro',     label: 'Gemini 2.5 Pro',    provider: 'google',    level: 1, local: false },
-]
+// 不再使用写死的兜底模型：模型列表完全来自后端登录返回的 availableModels。
+// 这样“后台配置什么、前端就显示什么”，避免出现数据库里并不存在的“幽灵模型”
+// 被选中后导致对话接口 500（模型不存在或未启用）。
+const fallbackModels = []
 
 // 从 chatStore.availableModels 构建模型列表
 const models = computed(() => {

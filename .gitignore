@@ -1,9 +1,25 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+dist-ssr/
+
+# Local env / secrets
 .env
 .env.local
 .env.*.local
+*.local
+
+# Test / tooling artifacts
+playwright-report/
+test-results/
+coverage/
 *.log
+
+# Editor / OS / AI tooling
+.vscode/
+.idea/
+.claude/
 .DS_Store
-.vscode
-.idea
+Thumbs.db

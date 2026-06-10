@@ -1,16 +1,8 @@
-import axios from 'axios'
 import { attachIdentityHeaders } from '@/api/identity'
+import { createApiClient } from '@/api/http'
 
-// API 基础URL - 根据环境变量设置，默认为 localhost:8080
-const API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
-
-const authClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+// 登录态客户端：默认 10s 超时。登录/注册请求不注入身份头，其余请求统一附带 X-User-Id。
+const authClient = createApiClient({ timeout: 10000, attachIdentity: false })
 
 authClient.interceptors.request.use(config => {
   const method = String(config.method || 'get').toLowerCase()
