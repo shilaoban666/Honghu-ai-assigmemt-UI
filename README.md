@@ -20,21 +20,19 @@
   <img src="docs/screenshots/home.png" alt="Honghu AI 对话界面" width="92%"/>
 </p>
 
-> 本仓库是 **Honghu AI** 平台的 Web 前端（Vue 3 单页应用）。后端（Spring Boot 3 + Spring AI + RAG + 技能系统）见 👉 [Honghu-ai-assigmemt](https://github.com/shilaoban666/Honghu-ai-assigmemt)。
-
 ---
 
-## 目录
+## 🎯 项目定位
 
-- [核心功能](#核心功能)
-- [技术栈](#技术栈)
-- [系统架构](#系统架构)
-- [快速开始](#快速开始)
-- [可用脚本](#可用脚本)
-- [环境变量](#环境变量)
-- [项目结构](#项目结构)
-- [测试](#-测试)
-- [工程化](#工程化)
+**Honghu AI UI** 是 Honghu AI 平台的前端工程。它不只是一个聊天框页面，而是围绕 AI 产品常见工作流搭建的完整 SPA：用户登录、会话管理、流式聊天、文件上传、RAG 处理状态、技能开关、MCP 市场、设置中心、用量展示和企业模型成本后台。
+
+这个前端仓库用于配合后端项目展示完整产品交付能力：组件拆分、状态管理、接口封装、异常处理、响应式 UI、单元/组件/E2E 测试和 GitHub CI 都已经落地。
+
+## 🧭 前端架构
+
+<p align="center">
+  <img src="docs/images/honghu-ai-ui-architecture.svg" alt="Honghu AI UI 前端架构图" width="96%"/>
+</p>
 
 ---
 
@@ -57,146 +55,156 @@
 
 ## 技术栈
 
-| 分类 | 选型 |
+| 分类 | 技术选型 |
 |:---|:---|
-| **框架** | Vue 3（Composition API + `<script setup>`） |
-| **构建** | Vite 5（路由级懒加载代码分割） |
-| **状态 / 路由** | Pinia · Vue Router 4 |
-| **样式** | Tailwind CSS 3 · PostCSS · Autoprefixer |
-| **可视化 / 图标** | Apache ECharts 6 · @lucide/vue |
-| **网络** | Axios（统一 client + 身份拦截器）· 原生 `fetch`（SSE） |
-| **测试** | Vitest · @vue/test-utils · jsdom · Playwright（E2E） |
-| **质量** | ESLint 9（flat config）· Prettier · GitHub Actions CI |
+| 框架 | Vue 3 · Vue Router 4 · Composition API |
+| 构建 | Vite 5 · Rollup manualChunks |
+| 状态 | Pinia · localStorage 恢复 |
+| 样式 | Tailwind CSS · CSS Variables · 多主题 |
+| 图表 | ECharts 6 |
+| 网络 | Axios · Fetch Stream · XMLHttpRequest 上传进度 |
+| 测试 | Vitest · Vue Test Utils · jsdom · Playwright |
+| 工程化 | npm scripts · GitHub Actions · Copilot Review 指令 |
 
----
-
-## 系统架构
-
-```mermaid
-flowchart LR
-    subgraph UI["Vue 3 SPA"]
-        direction TB
-        Router["Vue Router<br/>懒加载路由"]
-        Views["Views<br/>Chat · 技能广场 · 设置中心 · Admin"]
-        Comps["Components<br/>InputArea · ScreenshotEditor · charts …"]
-        Store["Pinia · chatStore"]
-        Router --> Views --> Comps
-        Views --> Store
-    end
-
-    subgraph API["src/api（统一封装）"]
-        Http["http.js<br/>createApiClient + 身份拦截器"]
-        Auth["auth.js"]
-        Chat["chat.js (SSE)"]
-        Rag["rag.js (预签名直传)"]
-        Mcp["mcpMarketplace.js"]
-        Admin["admin.js (Bearer)"]
-        Http --> Auth & Chat & Rag & Mcp
-    end
-
-    Views --> API
-    API -->|"VITE_AUTH_API_URL"| Backend["Honghu AI 后端<br/>Spring Boot + Spring AI"]
-    Rag -.预签名直传.-> S3[("S3")]
-```
-
-> 技能系统设计图见 [`docs/capability-system/`](docs/capability-system/)（含 overview / 数据模型 / 市场流程 / 运行时边界等 9 张图）。
-
----
-
-## 快速开始
+## 🚀 快速启动
 
 ```bash
-# 1. 安装依赖
-npm install
+git clone https://github.com/shilaoban666/Honghu-ai-assigmemt-UI.git
+cd Honghu-ai-assigmemt-UI
 
-# 2. 配置后端地址
+npm ci
 cp .env.example .env
-#   编辑 .env：VITE_AUTH_API_URL=http://localhost:8080/api/v1（或你的后端地址）
-
-# 3. 启动开发服务器
-npm run dev          # 默认 http://localhost:5173
-
-# 4. 生产构建
-npm run build        # 产物输出到 dist/
-npm run preview      # 本地预览生产包
+npm run dev
 ```
 
-> 需要配合 [Honghu AI 后端](https://github.com/shilaoban666/Honghu-ai-assigmemt) 一起运行才能体验完整对话/RAG/技能功能。后端可用其 `docker compose up` 一键拉起。
+默认开发地址：
 
----
-
-## 可用脚本
-
-| 命令 | 说明 |
+| 服务 | 地址 |
 |:---|:---|
-| `npm run dev` | 启动 Vite 开发服务器（热更新） |
-| `npm run build` | 生产构建 |
-| `npm run preview` | 预览生产构建 |
-| `npm run test` | 运行 Vitest 单元/组件测试 |
-| `npm run test:coverage` | 覆盖率报告 |
-| `npm run test:e2e` | 运行 Playwright 端到端测试 |
-| `npm run lint` | ESLint 检查 |
-| `npm run lint:fix` | ESLint 自动修复 |
-| `npm run format` | Prettier 格式化 `src/` |
+| 🌐 前端开发服务 | http://localhost:5174 |
+| 🔌 后端 API | http://localhost:8080/api/v1 |
+| 🛡️ 后台 API | http://localhost:8080/api/v1/admin |
 
----
+`.env` 示例：
 
-## 环境变量
-
-| 变量 | 必填 | 说明 |
-|:---|:---:|:---|
-| `VITE_AUTH_API_URL` | ✅ | 后端 API 基础地址，如 `http://localhost:8080/api/v1`。生产部署改为真实地址。 |
-| `VITE_ADMIN_API_URL` | ⬜ | 后台 API 地址；缺省 = `VITE_AUTH_API_URL` + `/admin`。 |
-
-所有 API 模块统一从 `src/api/http.js` 读取基础地址，单点维护、避免漂移。
-
----
-
-## 项目结构
-
-```
-src/
-├── api/                 # 接口层
-│   ├── http.js          #   统一 axios 工厂 + 身份拦截器（单点 base URL）
-│   ├── identity.js      #   X-User-Id / X-Workspace-Id 身份头
-│   ├── auth.js          #   登录 / 注册 / 资料 / 头像 / 额度
-│   ├── chat.js          #   SSE 流式聊天 + 会话 / 历史
-│   ├── rag.js           #   预签名直传 + 摄取状态 SSE 订阅
-│   ├── mcpMarketplace.js#   技能广场 / 安装
-│   └── admin.js         #   后台（Bearer Token + 错误归一化）
-├── views/               # 18 个页面：Chat / 技能广场 / 设置中心(4类) / Admin
-├── components/          # 21 个组件：InputArea / ScreenshotEditor / charts / settings …
-├── layouts/             # ChatLayout 等布局
-├── stores/              # Pinia（chatStore）
-├── router/              # 路由（懒加载分块）
-├── utils/ · data/ · ico/ # 工具 / 静态数据 / 图标
-└── main.js / AdminApp.* # 前台入口 + 独立后台入口
+```env
+VITE_AUTH_API_URL=http://localhost:8080/api/v1
 ```
 
----
+> `vite.config.js` 当前开发端口为 `5174`。如果后端使用默认 `8080`，建议通过 `VITE_AUTH_API_URL` 直连后端。
+
+## 🗂️ 项目结构
+
+```text
+Honghu-ai-assigmemt-UI/
+├── src/
+│   ├── api/                    # chat / auth / rag / admin / identity / mcp marketplace
+│   ├── components/             # 聊天、输入、侧边栏、登录、弹窗、文件预览等组件
+│   ├── components/settings/    # 设置页通用组件
+│   ├── layouts/                # ChatLayout 主聊天壳
+│   ├── router/                 # Vue Router 配置
+│   ├── stores/                 # Pinia chatStore
+│   ├── utils/                  # 主题、i18n、历史消息归一化
+│   ├── views/
+│   │   ├── marketplace/        # MCP 技能市场
+│   │   └── settings/           # 通用 / 套餐 / 智能体 / 系统设置
+│   ├── AdminApp.vue            # 企业模型成本后台
+│   ├── App.vue
+│   └── main.js
+├── tests/
+│   ├── unit/                   # store、API、主题、i18n 单测
+│   ├── components/             # Vue 组件测试
+│   └── e2e/                    # Playwright 主界面 E2E
+├── docs/images/                # 架构图
+├── .github/workflows/ci.yml
+├── vite.config.js
+├── vitest.config.js
+├── playwright.config.js
+└── package.json
+```
+
+## 🌐 API 对接
+
+| 客户端 | 文件 | 后端路径 | 说明 |
+|:---|:---|:---|:---|
+| 聊天 | `src/api/chat.js` | `/api/v1/chat` | 持久化 SSE 聊天、历史消息、会话列表 |
+| RAG | `src/api/rag.js` | `/api/v1/rag` | 预签名上传、文件登记、状态轮询/订阅、下载 URL |
+| 登录 | `src/api/auth.js` | `/api/v1/users` | 注册、登录、用户资料 |
+| 后台 | `src/api/admin.js` | `/api/v1/admin` | 模型、价格、角色、用户、工作空间、用量、Provider |
+| 技能市场 | `src/api/mcpMarketplace.js` | `/api/v1/skills/mcp-marketplace` | MCP 市场查询与安装 |
+| 身份头 | `src/api/identity.js` | 所有用户态 API | 注入 `X-User-Id` 与 workspace 上下文 |
 
 ## 🧪 测试
 
 ```bash
-npm run test        # 63 个单元/组件测试（Vitest + @vue/test-utils）
-npm run test:e2e    # Playwright 端到端
+# 单元与组件测试
+npm run test
+
+# 生产构建
+npm run build
+
+# E2E 测试
+npm run test:e2e
+
+# 全量测试
+npm run test:all
 ```
 
-覆盖范围：聊天历史、身份头注入、聊天 API、chatStore（含异常 JSON 容错）、i18n、主题、ConfirmDialog 组件等。**CI 在每次 push / PR 自动跑 lint + 单测 + 构建。**
+当前测试覆盖重点：
 
----
+- `chatStore` 登录、恢复、会话、消息、置顶和删除逻辑
+- API 身份 Header 注入与历史消息归一化
+- 主题和 i18n 切换
+- `ConfirmDialog` 组件交互
+- 主聊天界面 Playwright smoke test
 
-## 工程化
+## 🚦 CI
 
-- **统一接口层**：`http.js` 提供 `createApiClient()` 工厂 + 身份拦截器，前台模块零重复；后台 `admin.js` 因鉴权不同独立维护。
-- **代码分割**：路由与后台、ECharts 按需分块（`ChatLayout` / `AdminApp` / `McpMarketplaceView` 独立 chunk），首屏更轻。
-- **环境驱动**：API 地址全部走环境变量，无硬编码，方便多环境部署。
-- **质量门禁**：ESLint 9 flat config + Prettier + GitHub Actions CI（lint → test → build）。
+GitHub Actions 在 push / PR 到 `master`、`dev` 时跑两个 job：
+
+**`build`（核心质量门，必须全绿）**
+
+1. `npm ci`
+2. `npm run lint`（ESLint）
+3. `npm run test`（Vitest 单元 / 组件）
+4. `npm run build`
+5. 上传 `dist` 产物
+
+**`e2e`（独立 job，Playwright 浏览器走缓存）**
+
+- `needs: build`；浏览器二进制用 `actions/cache` 缓存，命中时只补系统依赖
+- `webServer` 自动起 dev server 后跑 `npm run test:e2e`，上传 report / test results
+- `continue-on-error: true`：E2E 用真实浏览器有天然 flake，偶发失败不拖红整体绿标（要强制阻塞就删掉这行）
+
+CI 文件：`.github/workflows/ci.yml`
+
+## 🤖 Copilot PR Review
+
+仓库已准备好 Copilot Review 的仓内配置：
+
+- `.github/copilot-instructions.md`：告诉 Copilot 审查 Vue 前端时重点关注流式读取、文件上传状态、身份 Header、响应式 UI、可访问性、测试和构建体积。
+- `.github/pull_request_template.md`：要求 PR 明确变更范围、测试结果、截图和风险。
+- `.github/workflows/ci.yml`：提供真实可执行的质量门。
+
+还需要在 GitHub 页面开启自动审查：进入仓库 **Settings → Rules → Rulesets → New ruleset**，选择目标分支后启用 **Request pull request review from Copilot**。后端仓库也需要同样配置。
+
+官方参考：
+
+- [Configure automatic code review by Copilot](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-automatic-review)
+- [Add repository custom instructions for GitHub Copilot](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions)
+
+## 🗺️ Roadmap
+
+- [ ] 基于 OpenAPI 自动生成 TypeScript API Client。
+- [ ] 给 SSE 流式响应增加更细粒度的取消、重试和断点提示。
+- [ ] 增加后台端到端测试和 API mock。
+- [ ] 给 RAG 引用片段增加前端引用展开视图。
+- [ ] 增加 Lighthouse / bundle size budget 检查。
 
 ---
 
 <div align="center">
 
-**Honghu AI Web** — 配套后端见 [Honghu-ai-assigmemt](https://github.com/shilaoban666/Honghu-ai-assigmemt)
+**🦅 Honghu AI UI** — 把一套真实可用的 LLM 应用平台，完整地工程化落地。
 
 </div>

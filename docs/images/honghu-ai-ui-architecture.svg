@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="680" viewBox="0 0 1120 680" role="img" aria-labelledby="title desc">
+  <title id="title">Honghu AI 前端架构图</title>
+  <desc id="desc">展示 Vue 3 前端的页面、状态、API 客户端、RAG 上传、SSE 流式响应和后端服务之间的数据流。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#7f7b73"/>
+    </marker>
+    <marker id="arrow-hot" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#f39a18"/>
+    </marker>
+    <style>
+      .bg { fill: #fbfaf7; }
+      .section { fill: none; stroke: #e5e0d8; stroke-width: 1.4; stroke-dasharray: 7 7; rx: 10; }
+      .section-title { font: 600 15px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #55514a; }
+      .node { stroke-width: 1.4; rx: 9; }
+      .neutral { fill: #f7f5ef; stroke: #aaa69d; }
+      .blue { fill: #e8f3ff; stroke: #6aa3df; }
+      .purple { fill: #eeeaff; stroke: #8b80e8; }
+      .green { fill: #dff4ee; stroke: #4ba993; }
+      .orange { fill: #fff1dc; stroke: #d9963a; }
+      .title { font: 700 17px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #33302b; }
+      .label { font: 600 15px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #3f3f3f; }
+      .small { font: 500 12.5px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #6c6861; }
+      .code { font: 500 12px Consolas, Menlo, monospace; fill: #6c6861; }
+      .blue-text { fill: #0d4f8b; }
+      .purple-text { fill: #4b43a6; }
+      .green-text { fill: #086655; }
+      .orange-text { fill: #7a3f00; }
+      .arrow { fill: none; stroke: #7f7b73; stroke-width: 1.5; marker-end: url(#arrow); }
+      .arrow-hot { fill: none; stroke: #f39a18; stroke-width: 1.7; marker-end: url(#arrow-hot); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1120" height="680"/>
+  <text x="560" y="44" text-anchor="middle" class="title">Honghu AI UI · Vue 3 前端架构与交互链路</text>
+  <text x="560" y="68" text-anchor="middle" class="small">聊天主界面 · 设置中心 · MCP 市场 · 管理后台 · 文件上传 · SSE 流式渲染 · 测试与 CI</text>
+
+  <rect x="40" y="108" width="228" height="468" class="section"/>
+  <text x="58" y="136" class="section-title">① 页面与路由</text>
+
+  <rect x="72" y="164" width="164" height="62" class="node blue"/>
+  <text x="154" y="188" text-anchor="middle" class="label blue-text">ChatLayout</text>
+  <text x="154" y="208" text-anchor="middle" class="small">会话列表 / 输入 / 输出</text>
+
+  <rect x="72" y="252" width="164" height="62" class="node purple"/>
+  <text x="154" y="276" text-anchor="middle" class="label purple-text">SettingsLayout</text>
+  <text x="154" y="296" text-anchor="middle" class="small">主题 / 模型 / 记忆 / 额度</text>
+
+  <rect x="72" y="340" width="164" height="62" class="node orange"/>
+  <text x="154" y="364" text-anchor="middle" class="label orange-text">MCP Marketplace</text>
+  <text x="154" y="384" text-anchor="middle" class="small">MCP / Skills / CLI</text>
+
+  <rect x="72" y="428" width="164" height="62" class="node orange"/>
+  <text x="154" y="452" text-anchor="middle" class="label orange-text">AdminApp</text>
+  <text x="154" y="472" text-anchor="middle" class="small">模型成本管理后台</text>
+
+  <rect x="320" y="108" width="246" height="468" class="section"/>
+  <text x="338" y="136" class="section-title">② 组件与状态</text>
+
+  <rect x="352" y="156" width="182" height="58" class="node neutral"/>
+  <text x="443" y="181" text-anchor="middle" class="label">Sidebar / Header</text>
+  <text x="443" y="199" text-anchor="middle" class="small">导航 · 用户面板 · 新会话</text>
+
+  <rect x="352" y="232" width="182" height="58" class="node neutral"/>
+  <text x="443" y="257" text-anchor="middle" class="label">ChatArea</text>
+  <text x="443" y="275" text-anchor="middle" class="small">Markdown · 文件预览 · 流式渲染</text>
+
+  <rect x="352" y="308" width="182" height="66" class="node neutral"/>
+  <text x="443" y="333" text-anchor="middle" class="label">InputArea</text>
+  <text x="443" y="353" text-anchor="middle" class="small">模型选择 · 附件 · 技能开关</text>
+
+  <rect x="352" y="392" width="182" height="66" class="node green"/>
+  <text x="443" y="417" text-anchor="middle" class="label green-text">Pinia chatStore</text>
+  <text x="443" y="437" text-anchor="middle" class="small">会话 / 登录 / 额度 / 本地恢复</text>
+
+  <rect x="352" y="476" width="182" height="58" class="node purple"/>
+  <text x="443" y="501" text-anchor="middle" class="label purple-text">Utils</text>
+  <text x="443" y="519" text-anchor="middle" class="small">主题 · i18n · 身份 Header</text>
+
+  <rect x="618" y="108" width="220" height="468" class="section"/>
+  <text x="636" y="136" class="section-title">③ API 客户端</text>
+
+  <rect x="650" y="156" width="156" height="60" class="node purple"/>
+  <text x="728" y="181" text-anchor="middle" class="label purple-text">chat.js</text>
+  <text x="728" y="199" text-anchor="middle" class="code">SSE / persistent stream</text>
+
+  <rect x="650" y="238" width="156" height="68" class="node green"/>
+  <text x="728" y="263" text-anchor="middle" class="label green-text">rag.js</text>
+  <text x="728" y="283" text-anchor="middle" class="small">预签名上传 · 状态 SSE</text>
+
+  <rect x="650" y="328" width="156" height="60" class="node orange"/>
+  <text x="728" y="353" text-anchor="middle" class="label orange-text">admin.js</text>
+  <text x="728" y="371" text-anchor="middle" class="small">Bearer Token 后台 API</text>
+
+  <rect x="650" y="410" width="156" height="60" class="node orange"/>
+  <text x="728" y="435" text-anchor="middle" class="label orange-text">mcpMarketplace.js</text>
+  <text x="728" y="453" text-anchor="middle" class="small">能力市场安装</text>
+
+  <rect x="650" y="492" width="156" height="50" class="node neutral"/>
+  <text x="728" y="522" text-anchor="middle" class="code">VITE_AUTH_API_URL</text>
+
+  <rect x="890" y="108" width="190" height="468" class="section"/>
+  <text x="908" y="136" class="section-title">④ 后端与质量门</text>
+
+  <rect x="920" y="156" width="130" height="60" class="node purple"/>
+  <text x="985" y="181" text-anchor="middle" class="label purple-text">Chat API</text>
+  <text x="985" y="199" text-anchor="middle" class="code">/api/v1/chat</text>
+
+  <rect x="920" y="238" width="130" height="60" class="node green"/>
+  <text x="985" y="263" text-anchor="middle" class="label green-text">RAG API</text>
+  <text x="985" y="281" text-anchor="middle" class="code">/api/v1/rag</text>
+
+  <rect x="920" y="320" width="130" height="60" class="node orange"/>
+  <text x="985" y="345" text-anchor="middle" class="label orange-text">Admin API</text>
+  <text x="985" y="363" text-anchor="middle" class="code">/api/v1/admin</text>
+
+  <rect x="920" y="402" width="130" height="60" class="node orange"/>
+  <text x="985" y="427" text-anchor="middle" class="label orange-text">Skill API</text>
+  <text x="985" y="445" text-anchor="middle" class="code">/skills/*</text>
+
+  <rect x="910" y="496" width="150" height="48" class="node blue"/>
+  <text x="985" y="525" text-anchor="middle" class="small blue-text">Vitest · Playwright · CI</text>
+
+  <path d="M236 195 C282 195 306 185 352 185" class="arrow"/>
+  <path d="M236 459 C282 459 306 425 352 425" class="arrow"/>
+  <path d="M534 341 C576 341 608 186 650 186" class="arrow-hot"/>
+  <path d="M534 341 C576 341 608 272 650 272" class="arrow"/>
+  <path d="M534 425 C576 425 608 186 650 186" class="arrow"/>
+  <path d="M806 186 C850 186 876 186 920 186" class="arrow-hot"/>
+  <path d="M806 272 C850 272 876 268 920 268" class="arrow"/>
+  <path d="M806 358 C850 358 876 350 920 350" class="arrow"/>
+  <path d="M806 440 C850 440 876 432 920 432" class="arrow"/>
+
+  <rect x="76" y="606" width="968" height="38" class="node neutral"/>
+  <text x="560" y="630" text-anchor="middle" class="small">CI：npm ci · Vitest 单元/组件测试 · Vite build · Playwright E2E · Copilot PR Review 指令</text>
+</svg>
