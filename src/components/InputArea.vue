@@ -338,7 +338,6 @@
           <span>为 AI 添加技能</span>
         </div>
         <div class="skill-mcp-right">
-
           <span class="mcp-dot" title="Gmail">M</span>
           <span class="mcp-dot g" title="Google">G</span>
           <span class="mcp-dot s" title="Slack">S</span>
