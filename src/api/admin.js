@@ -1,7 +1,9 @@
 import axios from 'axios'
 import { reactive } from 'vue'
+import { API_BASE_URL } from '@/api/http'
 
-const API_BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
+// 后台沿用同一套后端基础地址，但鉴权方式不同（Bearer Token），因此单独建客户端。
+const API_BASE = API_BASE_URL
 const ADMIN_BASE = import.meta.env.VITE_ADMIN_API_URL || `${API_BASE}/admin`
 const ADMIN_USER_KEY = 'adminUserId'
 const ADMIN_TOKEN_KEY = 'adminToken'
@@ -181,6 +183,14 @@ export const adminApi = {
   patchModelMarkupRatio: (code, markupRatio) => request('patch', `/models/${encodeURIComponent(code)}/markup-ratio`, { data: { markupRatio } }),
   getModelRoles: (code) => request('get', `/models/${encodeURIComponent(code)}/roles`),
   replaceModelRoles: (code, roles) => request('put', `/models/${encodeURIComponent(code)}/roles`, { data: { roles } }),
+
+  // ---- Provider 注册表（模型提供商配置 + 加密 API Key；查询只回掩码）----
+  getProviders: () => request('get', '/providers'),
+  getProvider: (code) => request('get', `/providers/${encodeURIComponent(code)}`),
+  createProvider: (data) => request('post', '/providers', { data }),
+  patchProvider: (code, data) => request('patch', `/providers/${encodeURIComponent(code)}`, { data }),
+  setProviderEnabled: (code, enabled) => request('patch', `/providers/${encodeURIComponent(code)}/enabled`, { data: { enabled } }),
+  deleteProvider: (code) => request('delete', `/providers/${encodeURIComponent(code)}`),
 
   getRoles: () => request('get', '/roles'),
   getRoleQuota: (role) => request('get', `/roles/${encodeURIComponent(role)}/quota`),

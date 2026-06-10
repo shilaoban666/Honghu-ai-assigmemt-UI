@@ -1,18 +1,12 @@
-import axios from 'axios'
-import { attachIdentityHeaders, buildIdentityHeaders, getStoredUserId } from '@/api/identity'
+import { buildIdentityHeaders, getStoredUserId } from '@/api/identity'
+import { API_BASE_URL, createApiClient } from '@/api/http'
 
-// 统一 Base URL
-const BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
+// 统一 Base URL（与 auth/rag/marketplace 共用同一套环境变量与基础地址）
+const BASE = API_BASE_URL
 
-// Axios 客户端用于普通 REST 请求。所有需要用户上下文的接口统一注入 X-User-Id，
+// Axios 客户端用于普通 REST 请求；身份头（X-User-Id 等）由共享 client 自动注入，
 // 避免聊天流式请求能通过、历史消息/会话管理却因为缺少身份头被后端拦截。
-const apiClient = axios.create({
-  baseURL: BASE,
-  timeout: 30000,
-  headers: { 'Content-Type': 'application/json' }
-})
-
-apiClient.interceptors.request.use(config => attachIdentityHeaders(config))
+const apiClient = createApiClient({ timeout: 30000 })
 
 // SSE 公共流式处理器
 async function ssePost(url, body, onData, onError, onComplete) {

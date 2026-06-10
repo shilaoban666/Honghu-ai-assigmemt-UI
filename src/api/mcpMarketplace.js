@@ -1,18 +1,8 @@
-import axios from 'axios'
-import { attachIdentityHeaders, getStoredUserId } from '@/api/identity'
+import { getStoredUserId } from '@/api/identity'
+import { createApiClient } from '@/api/http'
 
 // MCP 商店接口复用后端 /api/v1 基础地址，和 auth/chat/rag 模块保持同一套环境变量。
-const API_BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/api/v1'
-
-const mcpMarketplaceClient = axios.create({
-  baseURL: API_BASE,
-  timeout: 12000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-mcpMarketplaceClient.interceptors.request.use(config => attachIdentityHeaders(config))
+const mcpMarketplaceClient = createApiClient({ timeout: 12000 })
 
 /**
  * 查询全网 MCP 技能商店。
