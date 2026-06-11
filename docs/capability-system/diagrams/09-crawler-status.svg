@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680">
+  <defs>
+    <style>
+      .bg{fill:#fbfaf7}.title{font:700 26px "Microsoft YaHei",Arial,sans-serif;fill:#333}.box{fill:#f7f5ef;stroke:#aaa69d;stroke-width:1.5;rx:10}.done{fill:#dff4ee;stroke:#4ba993}.todo{fill:#fff1dc;stroke:#d9963a}.future{fill:#eeeaff;stroke:#8b80e8}.label{font:700 16px "Microsoft YaHei",Arial,sans-serif;fill:#333}.small{font:500 13px "Microsoft YaHei",Arial,sans-serif;fill:#4f4b45}.mono{font:500 12px Consolas,monospace;fill:#555}.check{font:700 18px "Microsoft YaHei",Arial,sans-serif;fill:#086655}.warn{font:700 18px "Microsoft YaHei",Arial,sans-serif;fill:#7a3f00}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="680"/>
+  <text x="60" y="58" class="title">定时爬虫当前状态</text>
+
+  <rect x="80" y="130" width="310" height="420" class="box done"/>
+  <text x="235" y="170" text-anchor="middle" class="label">已经完成</text>
+  <text x="115" y="220" class="check">✓</text><text x="145" y="220" class="small">统一 skill 表可承载四类能力</text>
+  <text x="115" y="260" class="check">✓</text><text x="145" y="260" class="small">Liquibase seed 写入 Skill/CLI 样例</text>
+  <text x="115" y="300" class="check">✓</text><text x="145" y="300" class="small">marketplace API 按 kind 查询</text>
+  <text x="115" y="340" class="check">✓</text><text x="145" y="340" class="small">旧 MCP 定时入口存在</text>
+  <text x="145" y="370" class="mono">@Scheduled refreshMarketplaceCache()</text>
+
+  <rect x="445" y="130" width="310" height="420" class="box todo"/>
+  <text x="600" y="170" text-anchor="middle" class="label">还没完成</text>
+  <text x="480" y="220" class="warn">!</text><text x="510" y="220" class="small">没有真实访问外部 registry</text>
+  <text x="480" y="260" class="warn">!</text><text x="510" y="260" class="small">没有去重、审核、隔离状态</text>
+  <text x="480" y="300" class="warn">!</text><text x="510" y="300" class="small">没有 MCP tools/list 探活</text>
+  <text x="480" y="340" class="warn">!</text><text x="510" y="340" class="small">没有 Claude Skills parser</text>
+  <text x="480" y="380" class="warn">!</text><text x="510" y="380" class="small">没有 CLI 白名单同步 job</text>
+
+  <rect x="810" y="130" width="310" height="420" class="box future"/>
+  <text x="965" y="170" text-anchor="middle" class="label">建议下一步</text>
+  <text x="845" y="220" class="small">1. 新增 CapabilityCatalogSyncJob</text>
+  <text x="845" y="260" class="small">2. 每种来源一个 adapter</text>
+  <text x="845" y="300" class="small">3. 写 skill / skill_tool</text>
+  <text x="845" y="340" class="small">4. 记录 source_url / review_status</text>
+  <text x="845" y="380" class="small">5. 加 SSRF 和 installSpec 审查</text>
+  <text x="845" y="420" class="small">6. 前端继续读统一 API</text>
+</svg>

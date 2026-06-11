@@ -14,15 +14,15 @@ export const themes = {
   },
   dark: {
     id: 'dark',
-    name: '暗夜黑',
-    primaryColor: '#1a1a1a',
-    primaryLight: '#333333',
-    primaryBg: '#f5f5f5',
-    borderColor: 'rgba(0, 0, 0, 0.15)',
-    hoverBg: 'rgba(0, 0, 0, 0.08)',
-    sidebarBg: 'linear-gradient(135deg, #2a2a2a 0%, #242424 100%)',
-    headerBg: 'linear-gradient(135deg, #2a2a2a 0%, #242424 100%)',
-    chatBg: 'linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%)'
+    name: '曜石黑',
+    primaryColor: '#16a36a',
+    primaryLight: '#58d59a',
+    primaryBg: '#10251b',
+    borderColor: 'rgba(88, 213, 154, 0.20)',
+    hoverBg: 'rgba(88, 213, 154, 0.10)',
+    sidebarBg: 'linear-gradient(135deg, #111a15 0%, #0c130f 100%)',
+    headerBg: 'linear-gradient(135deg, #111a15 0%, #0c130f 100%)',
+    chatBg: 'linear-gradient(135deg, #0d130f 0%, #111a15 100%)'
   },
   blue: {
     id: 'blue',
@@ -103,11 +103,7 @@ export const applyTheme = (themeId) => {
   if (!theme) return
 
   const root = document.documentElement
-  
-  // 设置 data-theme 属性，让 CSS 变量根据主题改变
   root.setAttribute('data-theme', themeId)
-  
-  // 设置所有 CSS 变量
   root.style.setProperty('--primary-color', theme.primaryColor)
   root.style.setProperty('--primary-light', theme.primaryLight)
   root.style.setProperty('--primary-bg', theme.primaryBg)
@@ -121,11 +117,8 @@ export const applyTheme = (themeId) => {
   localStorage.setItem('theme', themeId)
 }
 
-export const getTheme = () => {
-  return localStorage.getItem('theme') || 'green'
-}
+export const getTheme = () => localStorage.getItem('theme') || 'green'
 
 export const initTheme = () => {
-  const savedTheme = getTheme()
-  applyTheme(savedTheme)
+  applyTheme(getTheme())
 }

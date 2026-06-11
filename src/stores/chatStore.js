@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { getUserSessions, getSessionChatHistory } from '@/api/chat'
+import { getUserInfo, getUserQuota } from '@/api/auth'
+import { extractHistoryList, normalizeHistoryPayload } from '@/utils/chatHistory'
 
 export const useChat = defineStore('chat', () => {
   const chats = ref([])
   const currentChatId = ref(null)
   const loading = ref(false)
-  const memory = ref({}) // 记忆存储
+  const memory = ref({})
 
-  // 用户认证相关状态
   const isLoggedIn = ref(false)
   const currentUser = ref(null)
   const userId = ref(null)
@@ -16,41 +17,52 @@ export const useChat = defineStore('chat', () => {
   const userEmail = ref('')
   const userPhone = ref('')
   const userAvatar = ref('')
+  const userRole = ref('GUEST')
+  const identity = ref('GUEST')
+  const identityLabel = ref('')
+  const availableModels = ref([])
+  const quotaSnapshot = ref({ daily: null, monthly: null })
+  const quotaLoading = ref(false)
+  const quotaError = ref('')
 
-  // 从localStorage恢复登录状态
   const initFromLocalStorage = () => {
     const savedIsLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
     const savedUserInfo = localStorage.getItem('userInfo')
-    
-    if (savedIsLoggedIn && savedUserInfo) {
-      try {
-        const userInfo = JSON.parse(savedUserInfo)
-        login(userInfo)
-      } catch (error) {
-        console.error('恢复用户信息失败:', error)
-        logout()
-      }
+
+    if (!savedIsLoggedIn || !savedUserInfo) return
+
+    try {
+      login(JSON.parse(savedUserInfo))
+    } catch (error) {
+      console.error('恢复用户信息失败:', error)
+      logout()
     }
   }
 
-  // 登录
-  const login = (userInfo) => {
+  const login = (userInfo = {}) => {
     isLoggedIn.value = true
     currentUser.value = userInfo
     userId.value = userInfo.userId
-    username.value = userInfo.username
+    username.value = userInfo.username || userInfo.nickname || ''
     userEmail.value = userInfo.email || ''
     userPhone.value = userInfo.phone || ''
-    userAvatar.value = userInfo.avatar || ''
+    userAvatar.value = userInfo.avatar || userInfo.avatarUrl || localStorage.getItem('userAvatar') || ''
+    userRole.value = userInfo.userRole || 'GUEST'
+    identity.value = userInfo.identity || userInfo.userRole || 'GUEST'
+    identityLabel.value = userInfo.identityLabel || ''
+    availableModels.value = userInfo.availableModels || []
+    quotaSnapshot.value = userInfo.quota || {
+      daily: userInfo.dailyQuota || null,
+      monthly: userInfo.monthlyQuota || null
+    }
+    quotaError.value = ''
 
-    // 保存到localStorage
     localStorage.setItem('isLoggedIn', 'true')
-    localStorage.setItem('userId', userInfo.userId)
-    localStorage.setItem('username', userInfo.username)
+    if (userInfo.userId) localStorage.setItem('userId', userInfo.userId)
+    if (userInfo.username) localStorage.setItem('username', userInfo.username)
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
   }
 
-  // 登出
   const logout = () => {
     isLoggedIn.value = false
     currentUser.value = null
@@ -59,59 +71,105 @@ export const useChat = defineStore('chat', () => {
     userEmail.value = ''
     userPhone.value = ''
     userAvatar.value = ''
+    userRole.value = 'GUEST'
+    identity.value = 'GUEST'
+    identityLabel.value = ''
+    availableModels.value = []
+    quotaSnapshot.value = { daily: null, monthly: null }
+    quotaLoading.value = false
+    quotaError.value = ''
 
-    // 清除localStorage
     localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('userId')
     localStorage.removeItem('username')
     localStorage.removeItem('userInfo')
     localStorage.removeItem('rememberMe')
+    localStorage.removeItem('userAvatar')
 
-    // 清除所有对话
     chats.value = []
     currentChatId.value = null
   }
 
-  // 更新用户信息
-  const updateUserInfo = (userInfo) => {
-    if (isLoggedIn.value) {
-      currentUser.value = { ...currentUser.value, ...userInfo }
-      if (userInfo.email) userEmail.value = userInfo.email
-      if (userInfo.phone) userPhone.value = userInfo.phone
-      if (userInfo.avatar) userAvatar.value = userInfo.avatar
-      localStorage.setItem('userInfo', JSON.stringify(currentUser.value))
+  const updateUserInfo = (userInfo = {}) => {
+    if (!isLoggedIn.value) return
+
+    currentUser.value = { ...currentUser.value, ...userInfo }
+    if (userInfo.email !== undefined) userEmail.value = userInfo.email
+    if (userInfo.phone !== undefined) userPhone.value = userInfo.phone
+    if (userInfo.avatar !== undefined || userInfo.avatarUrl !== undefined) {
+      userAvatar.value = userInfo.avatar || userInfo.avatarUrl || ''
+      if (userAvatar.value) {
+        localStorage.setItem('userAvatar', userAvatar.value)
+      } else {
+        localStorage.removeItem('userAvatar')
+      }
+    }
+    localStorage.setItem('userInfo', JSON.stringify(currentUser.value))
+  }
+
+  const refreshCurrentUser = async (uid = userId.value) => {
+    if (!uid || uid === 'guest') return currentUser.value
+    const user = await getUserInfo(uid)
+    updateUserInfo(user)
+    return user
+  }
+
+  // 头像下拉和用户中心统一读取这里的日/月标准 token 额度。
+  const loadUserQuota = async (uid = userId.value, workspaceId = '') => {
+    if (!uid) {
+      quotaSnapshot.value = { daily: null, monthly: null }
+      return quotaSnapshot.value
+    }
+
+    quotaLoading.value = true
+    quotaError.value = ''
+    try {
+      const quota = await getUserQuota(uid, workspaceId)
+      quotaSnapshot.value = {
+        daily: quota?.daily || null,
+        monthly: quota?.monthly || null
+      }
+      return quotaSnapshot.value
+    } catch (err) {
+      quotaError.value = err?.message || '额度加载失败'
+      throw err
+    } finally {
+      quotaLoading.value = false
     }
   }
 
-  // 加载指定会话的聊天历史
   const loadSessionHistory = async (sessionId) => {
     try {
       const history = await getSessionChatHistory(sessionId)
       const chat = chats.value.find(c => c.id === sessionId)
-      if (chat) {
-        const sorted = [...history].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-        chat.messages = sorted.map(m => ({
-          role: m.chatRole,
-          content: m.content,
-          timestamp: new Date(m.createdAt).getTime()
-        }))
-      }
+      if (!chat) return
+
+      chat.messages = normalizeHistoryPayload(history)
+      chat.historyLoaded = true
+      chat.historyError = ''
     } catch (err) {
+      const chat = chats.value.find(c => c.id === sessionId)
+      if (chat) {
+        chat.historyLoaded = false
+        chat.historyError = err?.response?.data?.message || err?.message || 'history load failed'
+      }
       console.error('加载对话历史失败:', err)
     }
   }
 
-  // 加载用户所有会话并初始化最新会话的消息
   const loadUserSessions = async (uid) => {
     try {
       const sessions = await getUserSessions(uid)
-      const sorted = [...sessions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      const sorted = extractHistoryList(sessions).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       chats.value = sorted.map(s => ({
         id: s.sessionId,
         title: s.sessionName || s.title || '未命名对话',
         messages: [],
-        createdAt: s.createdAt
+        createdAt: s.createdAt,
+        historyLoaded: false,
+        historyError: ''
       }))
+
       if (chats.value.length > 0) {
         currentChatId.value = chats.value[0].id
         await loadSessionHistory(chats.value[0].id)
@@ -123,11 +181,11 @@ export const useChat = defineStore('chat', () => {
 
   const createNewChat = (customTitle = null) => {
     const newChat = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       title: customTitle || '新对话',
       messages: [],
       createdAt: new Date(),
-      memory: [] // 对话记忆
+      memory: []
     }
     chats.value.unshift(newChat)
     currentChatId.value = newChat.id
@@ -140,12 +198,11 @@ export const useChat = defineStore('chat', () => {
 
   const addMessage = (chatId, message) => {
     const chat = chats.value.find(c => c.id === chatId)
-    if (chat) {
-      chat.messages.push(message)
-      // 更新标题（如果是第一条用户消息）
-      if (chat.messages.filter(m => m.role === 'user').length === 1) {
-        chat.title = message.content.substring(0, 30) || '新对话'
-      }
+    if (!chat) return
+
+    chat.messages.push(message)
+    if (chat.messages.filter(m => m.role === 'user').length === 1) {
+      chat.title = message.content?.substring(0, 30) || '新对话'
     }
   }
 
@@ -155,33 +212,16 @@ export const useChat = defineStore('chat', () => {
 
     loading.value = true
     try {
-      // 获取上下文消息
-      const contextMessages = chat.messages.slice(-10) // 最近10条消息
-
-      // 调用AI API
-      const response = await callAIAPI({
-        message: userMessage,
-        history: contextMessages,
-        memory: chat.memory
-      })
-
-      // 添加AI响应
-      addMessage(chatId, {
-        role: 'assistant',
-        content: response.content,
-        timestamp: Date.now()
-      })
-
-      // 更新记忆
-      if (response.memory) {
-        chat.memory = response.memory
-      }
+      // 先把用户输入落到会话里。
+      addMessage(chatId, { role: 'user', content: userMessage, timestamp: Date.now() })
+      // 真实对话走 api/chat.js 的流式接口（persistentStreamChat）。
+      // store 内这条非流式入口属于早期占位，未接入模型调用，统一抛错走下方降级提示。
+      throw new Error('AI API 未接入：请改用流式聊天接口 persistentStreamChat')
     } catch (error) {
       console.error('发送消息失败:', error)
-      // 显示更友好的错误信息，而不是中断UI
       addMessage(chatId, {
         role: 'assistant',
-        content: '⚠️ 后端服务未连接\n\n如果你已启动后端服务，请检查：\n1. 后端服务是否运行在 http://localhost:3000\n2. API 端点是否为 /api/chat\n3. 后端是否设置了 CORS 跨域请求支持\n\n你仍然可以输入消息测试前端UI，但需要后端才能获取真实的AI回复。',
+        content: '后端服务未连接，请确认服务地址和 API 配置。',
         isError: true,
         timestamp: Date.now()
       })
@@ -192,17 +232,18 @@ export const useChat = defineStore('chat', () => {
 
   const deleteChat = (chatId) => {
     const index = chats.value.findIndex(c => c.id === chatId)
-    if (index !== -1) {
-      chats.value.splice(index, 1)
-      if (currentChatId.value === chatId) {
-        currentChatId.value = chats.value[0]?.id || null
-      }
+    if (index === -1) return
+
+    chats.value.splice(index, 1)
+    if (currentChatId.value === chatId) {
+      currentChatId.value = chats.value[0]?.id || null
     }
   }
 
   const togglePin = (chatId) => {
     const chat = chats.value.find(c => c.id === chatId)
     if (!chat) return
+
     chat.pinned = !chat.pinned
     chats.value = [
       ...chats.value.filter(c => c.pinned),
@@ -221,7 +262,6 @@ export const useChat = defineStore('chat', () => {
   }
 
   return {
-    // 聊天相关
     chats,
     currentChatId,
     loading,
@@ -234,7 +274,6 @@ export const useChat = defineStore('chat', () => {
     togglePin,
     getHistory,
     getMemory,
-    // 用户认证相关
     isLoggedIn,
     currentUser,
     userId,
@@ -242,11 +281,20 @@ export const useChat = defineStore('chat', () => {
     userEmail,
     userPhone,
     userAvatar,
+    userRole,
+    identity,
+    identityLabel,
+    availableModels,
+    quotaSnapshot,
+    quotaLoading,
+    quotaError,
     login,
     logout,
     updateUserInfo,
+    refreshCurrentUser,
     initFromLocalStorage,
     loadUserSessions,
-    loadSessionHistory
+    loadSessionHistory,
+    loadUserQuota
   }
 })

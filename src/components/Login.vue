@@ -318,7 +318,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { loginWithPassword, loginWithPhone, sendVerificationCode } from '@/api/auth'
+import { loginWithPassword, loginWithPhone, sendVerificationCode, loginAsGuest } from '@/api/auth'
 import { t, setLanguage, getLanguage } from '@/utils/i18n'
 
 const emit = defineEmits(['login', 'forgot-password', 'register', 'skip'])
@@ -423,8 +423,14 @@ const handleLogin = async () => {
     const r = await loginWithPassword(form.value.username, form.value.password)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
     if (form.value.rememberMe) localStorage.setItem('rememberMe', 'true')
-    emit('login', { userId: r.userId, username: r.username, nickname: r.nickname || r.username, email: r.email, phone: r.phone, avatar: r.avatar })
-  } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
+    emit('login', {
+      userId: r.userId, username: r.username, nickname: r.nickname || r.username,
+      email: r.email, phone: r.phone, avatar: r.avatar,
+      userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
+      permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
+    })
+  } catch (e) { 
+    errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
 }
 const handleSendCode = async () => {
   if (!form.value.phone.trim()) { errorMessage.value = t('phonePlaceholder'); return }
@@ -442,7 +448,12 @@ const handlePhoneLogin = async () => {
   try {
     const r = await loginWithPhone(form.value.phone, form.value.verificationCode)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
-    emit('login', { userId: r.userId, username: r.username, nickname: r.nickname || r.username, email: r.email, phone: r.phone, avatar: r.avatar })
+    emit('login', {
+      userId: r.userId, username: r.username, nickname: r.nickname || r.username,
+      email: r.email, phone: r.phone, avatar: r.avatar,
+      userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
+      permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
+    })
   } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
 }
 
@@ -1193,26 +1204,26 @@ onBeforeUnmount(() => { document.removeEventListener('click', onClickOutsideLang
 /* ── 标签页 ── */
 .tabs {
   position: relative; display: flex;
-  background: rgba(0,0,0,0.04); border-radius: 14px; padding: 3.5px;
+  background: rgba(45,134,89,0.08); border-radius: 18px; padding: 4px;
   margin-bottom: 24px;
 }
 .dark .tabs { background: rgba(255,255,255,0.06); }
 .tab {
   flex: 1; display: flex; align-items: center; justify-content: center;
   gap: 6px; padding: 10px 0; border: none; background: transparent;
-  border-radius: 11px; font-size: 13px; font-weight: 500; color: #888;
+  border-radius: 14px; font-size: 13px; font-weight: 500; color: #6f8f80;
   cursor: pointer; transition: all 0.25s; position: relative; z-index: 1;
 }
-.tab.active { color: var(--primary-color, #4caf50); font-weight: 600; }
+.tab.active { color: var(--primary-color, #4caf50); font-weight: 700; }
 .tab:hover:not(.active) { color: #555; }
 .dark .tab { color: #667; }
 .dark .tab.active { color: #69f0ae; }
 .dark .tab:hover:not(.active) { color: #8a9; }
 .tab-indicator {
-  position: absolute; bottom: 3.5px; left: 3.5px; height: calc(100% - 7px);
-  background: rgba(255,255,255,0.92); border-radius: 11px;
+  position: absolute; bottom: 4px; left: 4px; height: calc(100% - 8px);
+  background: rgba(255,255,255,0.94); border-radius: 14px;
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), width 0.35s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 18px rgba(45,134,89,0.12);
 }
 .dark .tab-indicator { background: rgba(255,255,255,0.08); }
 
