@@ -1121,10 +1121,14 @@ const sendMessage = () => {
     previewUrl: getFilePreviewUrl(f),
   }))
 
+  // 关键修复：发送前先确保存在稳定的 sessionId，并写回 currentChatId。
+  // 否则首条消息的 sessionId 可能为空，后端会为每条消息各建一个 session（聊两条变两个会话）。
+  // 必须在 emit 之前解析，保证 UI 落在同一个会话、且首条消息就带上该 id。
+  const sessionId = chatStore.ensureCurrentChatId()
+
   emit('send-message', { content, files, model: selectedModel.value, isUserMessage: true })
   emit('send-message', { content: '', isStreaming: true, isUserMessage: false, timestamp: Date.now(), isInitialMessage: true })
 
-  const sessionId = typeof chatStore.currentChatId === 'string' ? chatStore.currentChatId : String(chatStore.currentChatId || '')
   const chatRequest = {
     message: content,
     sessionId,

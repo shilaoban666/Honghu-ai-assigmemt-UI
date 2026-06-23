@@ -4,6 +4,33 @@ import { getUserSessions, getSessionChatHistory } from '@/api/chat'
 import { getUserInfo, getUserQuota } from '@/api/auth'
 import { extractHistoryList, normalizeHistoryPayload } from '@/utils/chatHistory'
 
+/**
+ * 生成稳定的会话 ID（UUID v4）。
+ *
+ * crypto.randomUUID() 只在安全上下文（HTTPS 或 localhost）可用；在局域网 HTTP 访问时它是
+ * undefined，直接调用会抛错，导致新建会话拿不到 id、首条消息 sessionId 为空，后端便会为每条
+ * 消息各建一个 session。这里优先用 randomUUID，不可用时退回 getRandomValues，再不行退回 Math.random，
+ * 保证任何环境都能拿到一个合法 UUID。
+ */
+function genId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const b = crypto.getRandomValues(new Uint8Array(16))
+      b[6] = (b[6] & 0x0f) | 0x40
+      b[8] = (b[8] & 0x3f) | 0x80
+      const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('')
+      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+    }
+  } catch { /* 退回到 Math.random 兜底 */ }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 export const useChat = defineStore('chat', () => {
   const chats = ref([])
   const currentChatId = ref(null)
@@ -60,6 +87,9 @@ export const useChat = defineStore('chat', () => {
     localStorage.setItem('isLoggedIn', 'true')
     if (userInfo.userId) localStorage.setItem('userId', userInfo.userId)
     if (userInfo.username) localStorage.setItem('username', userInfo.username)
+    // 持久化后端签发的 JWT：之后所有用户态请求都靠它走 Authorization: Bearer 鉴权，
+    // 不再依赖可被前端伪造的 X-User-Id（后端默认已不信任该头）。
+    if (userInfo.token) localStorage.setItem('authToken', userInfo.token)
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
   }
 
@@ -85,6 +115,7 @@ export const useChat = defineStore('chat', () => {
     localStorage.removeItem('userInfo')
     localStorage.removeItem('rememberMe')
     localStorage.removeItem('userAvatar')
+    localStorage.removeItem('authToken')
 
     chats.value = []
     currentChatId.value = null
@@ -181,7 +212,7 @@ export const useChat = defineStore('chat', () => {
 
   const createNewChat = (customTitle = null) => {
     const newChat = {
-      id: crypto.randomUUID(),
+      id: genId(),
       title: customTitle || '新对话',
       messages: [],
       createdAt: new Date(),
@@ -190,6 +221,18 @@ export const useChat = defineStore('chat', () => {
     chats.value.unshift(newChat)
     currentChatId.value = newChat.id
     return newChat
+  }
+
+  /**
+   * 确保当前存在一个会话并返回其 id；没有则新建一个。
+   *
+   * 发送消息前调用它，保证首条消息就带上稳定的 sessionId，
+   * 后续消息复用同一个 id，避免后端为每条消息各建一个 session。
+   */
+  const ensureCurrentChatId = () => {
+    const id = typeof currentChatId.value === 'string' ? currentChatId.value : ''
+    if (id) return id
+    return createNewChat().id
   }
 
   const selectChat = (chatId) => {
@@ -267,6 +310,7 @@ export const useChat = defineStore('chat', () => {
     loading,
     memory,
     createNewChat,
+    ensureCurrentChatId,
     selectChat,
     addMessage,
     sendMessage,
