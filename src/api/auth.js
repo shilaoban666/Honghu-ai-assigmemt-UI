@@ -116,30 +116,14 @@ export const loginWithPhone = async (phone, verificationCode) => {
 }
 
 /**
- * 获取微信扫码登录授权信息。
- *
- * 后端返回 { mock, appId, redirectUri, state, scope, url }：
- * - mock=true：演示模式，前端展示"演示登录"按钮；
- * - 真实模式：用 appId/redirectUri/state 内嵌二维码，或直接跳转 url。
- * state 由后端生成并写 Redis（一次性、5 分钟过期），回调时校验防 CSRF。
- * @returns {Promise<{mock:boolean, appId:string, redirectUri:string, state:string, scope:string, url:string}>}
- */
-export const getWeChatAuthorizeInfo = async () => {
-  const response = await authClient.get('/users/wechat/authorize')
-  return response.data
-}
-
-/**
- * 用户登录 - 微信扫码登录。
- * @param {string} code - 微信授权码（扫码回跳带回）
- * @param {string} [state] - 发起时的 state，原样回传供后端校验
+ * 用户登录 - 微信登录（模拟）
+ * @param {string} code - 微信授权码
  * @returns {Promise}
  */
-export const loginWithWeChat = async (code, state = '') => {
+export const loginWithWeChat = async (code) => {
   try {
     const response = await authClient.post('/users/login/wechat', {
-      code,
-      state
+      code
     })
     return response.data
   } catch (error) {

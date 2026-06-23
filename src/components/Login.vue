@@ -289,29 +289,11 @@
           </div>
 
           <div v-else key="wx" class="form-panel wechat-panel">
-            <!-- 拉取授权信息中 -->
-            <div v-if="wechatLoading && !wechatInfo" class="qr-wrap"><div class="qr-placeholder"><span class="spinner"></span></div></div>
-
-            <!-- 真实模式：内嵌微信官方扫码二维码 -->
-            <template v-else-if="wechatInfo && !wechatInfo.mock">
-              <div class="qr-wrap"><div id="wx_qr_container" class="wx-qr"></div></div>
-              <p class="wechat-hint">{{ t('scanQR') }}</p>
-              <a href="#" class="register-link" @click.prevent="openWeChatAuthPage">{{ t('wechatLogin') }} →</a>
-            </template>
-
-            <!-- 演示模式：占位图 + 一键演示登录 -->
-            <template v-else>
-              <div class="qr-wrap"><div class="qr-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zm4 0h3v3h-3zm-4 4h3v3h-3zm4 4h3"/></svg>
-                <p>{{ t('scanQR') }}</p>
-              </div></div>
-              <p class="wechat-hint">{{ t('wechatHint') }}</p>
-              <button class="submit-btn" @click="handleWeChatDemoLogin" :disabled="isLoading">
-                <span class="btn-shine"></span>
-                <span v-if="!isLoading" class="btn-text">{{ t('wechatLogin') }}</span>
-                <span v-else class="btn-loading"><span class="spinner"></span></span>
-              </button>
-            </template>
+            <div class="qr-wrap"><div class="qr-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zm4 0h3v3h-3zm-4 4h3v3h-3zm4 4h3"/></svg>
+              <p>{{ t('scanQR') }}</p>
+            </div></div>
+            <p class="wechat-hint">{{ t('wechatHint') }}</p>
           </div>
         </Transition>
 
@@ -335,8 +317,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { loginWithPassword, loginWithPhone, sendVerificationCode, loginAsGuest, loginWithWeChat, getWeChatAuthorizeInfo } from '@/api/auth'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { loginWithPassword, loginWithPhone, sendVerificationCode, loginAsGuest } from '@/api/auth'
 import { t, setLanguage, getLanguage } from '@/utils/i18n'
 
 const emit = defineEmits(['login', 'forgot-password', 'register', 'skip'])
@@ -440,11 +422,10 @@ const handleLogin = async () => {
   try {
     const r = await loginWithPassword(form.value.username, form.value.password)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
-    if (r.token) localStorage.setItem('authToken', r.token)
     if (form.value.rememberMe) localStorage.setItem('rememberMe', 'true')
     emit('login', {
       userId: r.userId, username: r.username, nickname: r.nickname || r.username,
-      email: r.email, phone: r.phone, avatar: r.avatar, token: r.token,
+      email: r.email, phone: r.phone, avatar: r.avatar,
       userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
       permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
     })
@@ -467,88 +448,14 @@ const handlePhoneLogin = async () => {
   try {
     const r = await loginWithPhone(form.value.phone, form.value.verificationCode)
     localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
-    if (r.token) localStorage.setItem('authToken', r.token)
     emit('login', {
       userId: r.userId, username: r.username, nickname: r.nickname || r.username,
-      email: r.email, phone: r.phone, avatar: r.avatar, token: r.token,
+      email: r.email, phone: r.phone, avatar: r.avatar,
       userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
       permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
     })
   } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
 }
-
-/* ── 微信扫码登录 ── */
-// 流程：进入微信 tab → 调后端拿授权信息(appId/redirectUri/state/url) → 真实模式内嵌官方二维码、
-// 演示模式给一键演示按钮。用户扫码授权后微信带 ?code=&state= 回跳，由 App.vue 统一处理回调完成登录。
-const wechatInfo = ref(null)
-const wechatLoading = ref(false)
-
-// 加载微信官方 WxLogin 脚本（内嵌扫码二维码用）。
-const loadWxLoginScript = () => new Promise((resolve, reject) => {
-  if (window.WxLogin) return resolve()
-  const s = document.createElement('script')
-  s.src = 'https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js'
-  s.onload = () => resolve()
-  s.onerror = () => reject(new Error('微信登录脚本加载失败，请改用下方链接打开'))
-  document.head.appendChild(s)
-})
-
-// 在页面内渲染微信官方扫码二维码。
-const renderWeChatQR = async (info) => {
-  await loadWxLoginScript()
-  await nextTick()
-  const el = document.getElementById('wx_qr_container')
-  if (el) el.innerHTML = ''
-  new window.WxLogin({
-    self_redirect: false,
-    id: 'wx_qr_container',
-    appid: info.appId,
-    scope: info.scope || 'snsapi_login',
-    redirect_uri: encodeURIComponent(info.redirectUri),
-    state: info.state,
-    style: 'black'
-  })
-}
-
-// 进入微信 tab 时拉取授权信息，并按模式渲染二维码或演示按钮。
-const prepareWeChat = async () => {
-  errorMessage.value = ''
-  wechatLoading.value = true
-  try {
-    const info = await getWeChatAuthorizeInfo()
-    wechatInfo.value = info
-    // state 存 sessionStorage：回调时前端先自校验一道，后端 Redis 再校验一道（双保险防 CSRF）。
-    if (info.state) sessionStorage.setItem('wechat_oauth_state', info.state)
-    if (!info.mock && info.appId) {
-      await renderWeChatQR(info).catch(err => { errorMessage.value = err.message })
-    }
-  } catch (e) {
-    errorMessage.value = e.message || t('loginFailed')
-  } finally { wechatLoading.value = false }
-}
-
-// 二维码内嵌失败时的兜底：直接跳转微信授权页。
-const openWeChatAuthPage = () => { if (wechatInfo.value?.url) window.location.href = wechatInfo.value.url }
-
-// 演示模式一键登录（后端 mock 模式不校验 state）。
-const handleWeChatDemoLogin = async () => {
-  errorMessage.value = ''
-  isLoading.value = true
-  try {
-    const r = await loginWithWeChat('honghu-demo-wechat', wechatInfo.value?.state || '')
-    localStorage.setItem('userId', r.userId); localStorage.setItem('username', r.username); localStorage.setItem('userInfo', JSON.stringify(r)); localStorage.setItem('isLoggedIn', 'true')
-    if (r.token) localStorage.setItem('authToken', r.token)
-    emit('login', {
-      userId: r.userId, username: r.username, nickname: r.nickname || r.username,
-      email: r.email, phone: r.phone, avatar: r.avatar, token: r.token,
-      userRole: r.userRole, identity: r.identity, identityLabel: r.identityLabel,
-      permissionSummary: r.permissionSummary, availableModels: r.availableModels || []
-    })
-  } catch (e) { errorMessage.value = e.message || t('loginFailed') } finally { isLoading.value = false }
-}
-
-// 切到微信 tab 且尚未拉取过时，准备扫码。
-watch(activeTab, (tab) => { if (tab === 'wechat' && !wechatInfo.value) prepareWeChat() })
 
 onMounted(() => { document.addEventListener('click', onClickOutsideLang); initParticles() })
 onBeforeUnmount(() => { document.removeEventListener('click', onClickOutsideLang); if (animFrameId) cancelAnimationFrame(animFrameId) })
