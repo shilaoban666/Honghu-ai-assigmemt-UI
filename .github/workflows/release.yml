@@ -1,16 +1,17 @@
 name: Release
 
-# 打 tag（如 v1.2.0）即出版本：构建生产包并把 dist.zip 附到 GitHub Release。
+# 打 tag（如 v1.2.0）即出版本：构建生产包、构建并推送 Docker 镜像到 GHCR、创建 GitHub Release。
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: write   # 创建 Release
+  packages: write   # 推送镜像到 GHCR
 
 jobs:
   release:
-    name: Build · Release
+    name: Build · Image · Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,8 +32,30 @@ jobs:
           # 在仓库 Settings → Variables 里配置生产后端地址；未配置则回退到 .env 默认。
           VITE_AUTH_API_URL: ${{ vars.VITE_AUTH_API_URL }}
 
-      - name: Zip dist
+      - name: Zip dist (static-hosting artifact)
         run: (cd dist && zip -r "../honghu-ui-${{ github.ref_name }}.zip" .)
+
+      # GHCR 镜像名必须全小写，这里把 owner/repo 统一转小写。
+      - name: Resolve lowercase image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            VITE_AUTH_API_URL=${{ vars.VITE_AUTH_API_URL }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:latest
 
       - name: Create GitHub Release (attach dist.zip)
         uses: softprops/action-gh-release@v2
